@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { api, formatDate, type LogEntry, type Providers, type User } from "../api";
-import { MailIcon, SlackLogo } from "../icons";
+import { AlertIcon, MailIcon, SlackLogo, TrashIcon } from "../icons";
 
-export default function Settings({ user, onUserChange }: { user: User; onUserChange: (u: User) => void }) {
+export default function Settings({
+  user,
+  onUserChange,
+  onAccountDeleted,
+}: {
+  user: User;
+  onUserChange: (u: User) => void;
+  onAccountDeleted: () => void;
+}) {
   const [providers, setProviders] = useState<Providers | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(() => {
@@ -186,7 +194,82 @@ export default function Settings({ user, onUserChange }: { user: User; onUserCha
           </table>
         )}
       </section>
+
+      <DeleteAccount email={user.email} onDeleted={onAccountDeleted} />
     </div>
+  );
+}
+
+function DeleteAccount({ email, onDeleted }: { email: string; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const matches = confirm.trim().toLowerCase() === email.toLowerCase();
+
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/me", { method: "DELETE", body: JSON.stringify({ confirm }) });
+      onDeleted();
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="card danger-zone">
+      <div className="setting">
+        <div>
+          <h2>
+            <AlertIcon /> Delete account
+          </h2>
+          <p className="muted">
+            Permanently delete your account, all your tasks and your notification history. This can't be undone.
+          </p>
+        </div>
+        {!open && (
+          <button className="btn danger sm" onClick={() => setOpen(true)}>
+            <TrashIcon width={15} height={15} /> Delete account
+          </button>
+        )}
+      </div>
+      {open && (
+        <form
+          className="stack sm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (matches && !busy) remove();
+          }}
+        >
+          {error && <div className="alert error">{error}</div>}
+          <label>
+            <span>
+              Type <strong className="mono-email">{email}</strong> to confirm
+            </span>
+            <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoFocus autoComplete="off" spellCheck={false} placeholder={email} />
+          </label>
+          <div className="btn-row">
+            <button type="submit" className="btn danger sm" disabled={!matches || busy}>
+              {busy ? "Deleting…" : "Permanently delete my account"}
+            </button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => {
+                setOpen(false);
+                setConfirm("");
+                setError(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }
 

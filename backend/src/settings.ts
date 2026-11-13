@@ -16,6 +16,27 @@ settingsRoutes.use("*", requireAuth);
 
 settingsRoutes.get("/me", async (c) => c.json(publicUser(await loadUser(c.env.DB, c.var.userId))));
 
+/**
+ * Permanently delete the signed-in user and everything they own. Child rows are deleted explicitly
+ * (rather than relying on ON DELETE CASCADE) so this works whether or not foreign keys are enforced.
+ * The body must include the account's email as confirmation.
+ */
+settingsRoutes.delete("/me", async (c) => {
+  const { confirm } = (await c.req.json().catch(() => ({}))) as { confirm?: string };
+  const user = await loadUser(c.env.DB, c.var.userId);
+  if (typeof confirm !== "string" || confirm.trim().toLowerCase() !== user.email.toLowerCase()) {
+    return c.json({ error: "Type your email address exactly to confirm." }, 400);
+  }
+  const db = c.env.DB;
+  await db.batch([
+    db.prepare("DELETE FROM notification_log WHERE user_id = ?").bind(user.id),
+    db.prepare("DELETE FROM tasks WHERE user_id = ?").bind(user.id),
+    db.prepare("DELETE FROM oauth_accounts WHERE user_id = ?").bind(user.id),
+    db.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
+  ]);
+  return c.json({ deleted: true });
+});
+
 settingsRoutes.put("/settings", async (c) => {
   let body: Record<string, unknown>;
   try {

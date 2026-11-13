@@ -123,7 +123,7 @@ export function PrivacyPage() {
 
       <h2>How long we keep data</h2>
       <p>
-        We keep your account, tasks and settings until you delete them or ask us to delete your account. Deleting a task removes it right
+        We keep your account, tasks and settings until you delete them or delete your account. Deleting a task removes it right
         away. Disconnecting Slack removes the stored webhook URL. Sign-in sessions expire after 30 days.
       </p>
 
@@ -133,7 +133,10 @@ export function PrivacyPage() {
         <li>Edit or delete any task.</li>
         <li>Disconnect Slack from Settings.</li>
         <li>
-          Ask us for a copy of your data or to delete your account and all its data through <Contact />.
+          Delete your account and all its data at any time from Settings → Delete account. Deletion is immediate and permanent.
+        </li>
+        <li>
+          Ask us for a copy of your data through <Contact />.
         </li>
       </ul>
 
@@ -205,7 +208,7 @@ export function TermsPage() {
 
       <h2>Ending use</h2>
       <p>
-        You can stop using Task(AI)Do at any time and ask us to delete your account through <Contact />. We may stop offering the service, and
+        You can stop using Task(AI)Do at any time and delete your account from Settings. We may stop offering the service, and
         will try to give notice first.
       </p>
 
