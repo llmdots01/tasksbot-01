@@ -7,6 +7,9 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
+import { Footer, PrivacyPage, TermsPage } from "./pages/Legal";
+
+const PUBLIC_PATHS = ["/privacy", "/terms"];
 
 const NAV: { path: string; label: string; icon: ReactNode }[] = [
   { path: "/", label: "Dashboard", icon: <GridIcon /> },
@@ -50,10 +53,14 @@ export default function App() {
   }, [loadMe]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || PUBLIC_PATHS.includes(path)) return;
     if (!user && path !== "/login") navigate("/login", true);
     if (user && path === "/login") navigate("/", true);
   }, [user, loading, path]);
+
+  // Legal pages are public and don't depend on sign-in state.
+  if (path === "/privacy") return <PrivacyPage />;
+  if (path === "/terms") return <TermsPage />;
 
   if (loading) return <div className="center muted">Loading…</div>;
   if (!user) return <Login />;
@@ -119,6 +126,7 @@ export default function App() {
           <Dashboard user={user} />
         )}
       </main>
+      <Footer />
     </div>
   );
 }

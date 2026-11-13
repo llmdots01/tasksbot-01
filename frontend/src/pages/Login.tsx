@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, API_URL, type Providers } from "../api";
+import { navigate } from "../router";
 import { ThemeButton } from "../theme";
 import {
   ArrowRightIcon,
@@ -13,6 +14,7 @@ import {
   SparkIcon,
   Wordmark,
 } from "../icons";
+import { Footer } from "./Legal";
 
 const FEATURES = [
   { icon: <BellIcon />, title: "Reminders you choose", text: "Pick an exact time or a preset (15 min, 1 hour or 1 day before), plus an alert when the task is due." },
@@ -30,10 +32,10 @@ export default function Login() {
   useEffect(() => {
     api<Providers>("/auth/providers")
       .then(setProviders)
-      .catch(() => setProviders({ google: false, github: false, slack: false }));
+      // If the check fails, keep the buttons usable rather than wrongly disabling them.
+      .catch(() => {});
   }, []);
 
-  const none = providers && !providers.google && !providers.github;
   const scrollToSignIn = () => document.getElementById("signin")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
@@ -99,7 +101,11 @@ export default function Login() {
           <a className={`btn oauth ${providers?.github === false ? "disabled" : ""}`} href={`${API_URL}/auth/github/login`}>
             <GithubLogo /> Continue with GitHub
           </a>
-          {none && <p className="muted small">Sign-in isn't configured on the server yet. See the README.</p>}
+          <p className="muted small signin-legal">
+            By continuing you agree to our{" "}
+            <a href="/terms" onClick={(e) => (e.preventDefault(), navigate("/terms"))}>Terms of Service</a> and{" "}
+            <a href="/privacy" onClick={(e) => (e.preventDefault(), navigate("/privacy"))}>Privacy Policy</a>.
+          </p>
         </div>
       </section>
 
@@ -128,6 +134,7 @@ export default function Login() {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }
