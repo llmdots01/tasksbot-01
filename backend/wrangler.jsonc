@@ -20,7 +20,8 @@
 
   // Non-secret configuration. Secrets are set with `wrangler secret put` (see README).
   "vars": {
-    "FRONTEND_URL": "https://tasksbot.pages.dev",
+    "FRONTEND_URL": "https://aitask.pareops.in",
+    "EXTRA_ORIGINS": "https://tasksbot.pages.dev",
     "API_URL": "https://tasksbot-api.tasksbot01.workers.dev",
     "EMAIL_FROM": "\"Task(AI)Do\" <onboarding@resend.dev>"
   }

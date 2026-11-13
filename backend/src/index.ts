@@ -9,11 +9,15 @@ import { processDueNotifications } from "./notify";
 const app = new Hono<AppEnv>();
 
 const corsMiddleware = async (c: Context<AppEnv>, next: Next) => {
-  const frontend = new URL(c.env.FRONTEND_URL);
-  const allowed = new Set([frontend.origin, "http://localhost:5173"]);
+  // FRONTEND_URL plus any extra origins (e.g. the pages.dev URL when a custom domain is primary).
+  const origins = [c.env.FRONTEND_URL, ...(c.env.EXTRA_ORIGINS ?? "").split(",")]
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .map((u) => new URL(u));
+  const allowed = new Set([...origins.map((u) => u.origin), "http://localhost:5173"]);
   // Also allow Pages preview deployments, e.g. https://abc123.tasksbot.pages.dev
-  const isPreview = (origin: string) =>
-    frontend.hostname.endsWith(".pages.dev") && origin.startsWith("https://") && origin.endsWith(`.${frontend.hostname}`);
+  const pagesHosts = origins.filter((u) => u.hostname.endsWith(".pages.dev")).map((u) => u.hostname);
+  const isPreview = (origin: string) => origin.startsWith("https://") && pagesHosts.some((h) => origin.endsWith(`.${h}`));
   return cors({
     origin: (origin) => (allowed.has(origin) || isPreview(origin) ? origin : null),
     allowHeaders: ["Authorization", "Content-Type"],
