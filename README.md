@@ -64,7 +64,7 @@ GitHub → Settings → Developer settings → **OAuth Apps** → New.
 
 ### 3. Email via Resend
 - Create an API key → secret `RESEND_API_KEY`.
-- `EMAIL_FROM` in `backend/wrangler.jsonc` is `TasksBot <onboarding@resend.dev>`. That sandbox sender **only delivers to your own Resend account email**. To email other users, verify a domain in Resend, set e.g. `TasksBot <reminders@yourdomain.com>`, then redeploy.
+- `EMAIL_FROM` in `backend/wrangler.jsonc` is `"Task(AI)Do" <reminders@aitest.pareops.in>`, sent from the domain verified in Resend (`aitest.pareops.in`, with DNS records on Route 53). For local development, `.dev.vars.example` uses Resend's sandbox sender `onboarding@resend.dev`, which only delivers to your own Resend account email.
 
 ### 4. Slack "Add to Slack" (optional)
 Pasting a webhook URL works without this. For the one-click button:

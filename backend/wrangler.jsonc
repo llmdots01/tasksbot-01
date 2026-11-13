@@ -23,6 +23,6 @@
     "FRONTEND_URL": "https://aitask.pareops.in",
     "EXTRA_ORIGINS": "https://tasksbot.pages.dev",
     "API_URL": "https://tasksbot-api.tasksbot01.workers.dev",
-    "EMAIL_FROM": "\"Task(AI)Do\" <onboarding@resend.dev>"
+    "EMAIL_FROM": "\"Task(AI)Do\" <reminders@aitest.pareops.in>"
   }
 }
