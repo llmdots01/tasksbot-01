@@ -24,7 +24,7 @@ const corsMiddleware = async (c: Context<AppEnv>, next: Next) => {
 app.use("/api/*", corsMiddleware);
 app.use("/auth/providers", corsMiddleware);
 
-app.get("/", (c) => c.json({ message: "TasksBot API", version: "2.0.0" }));
+app.get("/", (c) => c.json({ message: "Task(AI)Do API", version: "2.0.0" }));
 app.get("/health", (c) => c.json({ ok: true }));
 
 app.route("/auth", authRoutes);

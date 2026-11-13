@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, formatDate, type LogEntry, type Providers, type User } from "../api";
+import { MailIcon, SlackLogo } from "../icons";
 
 export default function Settings({ user, onUserChange }: { user: User; onUserChange: (u: User) => void }) {
   const [providers, setProviders] = useState<Providers | null>(null);
@@ -60,20 +61,27 @@ export default function Settings({ user, onUserChange }: { user: User; onUserCha
 
   return (
     <div className="stack">
-      <h1>Settings</h1>
+      <div className="page-head">
+        <div>
+          <h1>Settings</h1>
+          <p className="muted">Choose where your reminders are delivered.</p>
+        </div>
+      </div>
       {msg && <div className={`alert ${msg.kind === "ok" ? "success" : "error"}`}>{msg.text}</div>}
 
       <section className="card">
         <div className="setting">
           <div>
-            <h2>Email notifications</h2>
+            <h2>
+              <MailIcon /> Email notifications
+            </h2>
             <p className="muted">
               Reminders and due alerts go to <strong>{user.email}</strong>.
             </p>
           </div>
           <Switch checked={user.email_notifications} disabled={busy === "email"} onChange={(v) => save({ email_notifications: v }, "email")} label="Email notifications" />
         </div>
-        <button className="btn ghost sm" disabled={busy === "test-email"} onClick={() => test("email")}>
+        <button className="btn outline sm" disabled={busy === "test-email"} onClick={() => test("email")}>
           {busy === "test-email" ? "Sending…" : "Send test email"}
         </button>
       </section>
@@ -81,7 +89,9 @@ export default function Settings({ user, onUserChange }: { user: User; onUserCha
       <section className="card">
         <div className="setting">
           <div>
-            <h2>Slack notifications</h2>
+            <h2>
+              <SlackLogo /> Slack notifications
+            </h2>
             <p className="muted">
               {user.slack_connected
                 ? `Connected${user.slack_channel ? ` to ${user.slack_channel}` : " via webhook"}.`
@@ -98,7 +108,7 @@ export default function Settings({ user, onUserChange }: { user: User; onUserCha
 
         {user.slack_connected ? (
           <div className="btn-row">
-            <button className="btn ghost sm" disabled={busy === "test-slack"} onClick={() => test("slack")}>
+            <button className="btn outline sm" disabled={busy === "test-slack"} onClick={() => test("slack")}>
               {busy === "test-slack" ? "Sending…" : "Send test message"}
             </button>
             <button className="btn ghost sm danger-text" disabled={busy === "disconnect"} onClick={disconnect}>

@@ -22,6 +22,6 @@
   "vars": {
     "FRONTEND_URL": "https://tasksbot.pages.dev",
     "API_URL": "https://tasksbot-api.tasksbot01.workers.dev",
-    "EMAIL_FROM": "TasksBot <onboarding@resend.dev>"
+    "EMAIL_FROM": "\"Task(AI)Do\" <onboarding@resend.dev>"
   }
 }
