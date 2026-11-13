@@ -5,7 +5,7 @@ Create tasks with due dates and reminders. Get notified by **email** (via [Resen
 | Part | Runs on | Live URL |
 |---|---|---|
 | API (`backend/`) | Cloudflare Workers + D1 + Cron Triggers | https://tasksbot-api.tasksbot01.workers.dev |
-| Web app (`frontend/`) | Cloudflare Pages (React + Vite) | https://tasksbot.pages.dev |
+| Web app (`frontend/`) | Cloudflare Pages (React + Vite) | https://aitask.pareops.in (also https://tasksbot.pages.dev) |
 
 This is a port of the original Flask + Streamlit app, which could not run on Cloudflare. The data model is the same: title, description, due date, priority, status, category, tags and reminder time. Each task now belongs to a signed-in user.
 
@@ -58,7 +58,7 @@ Google Cloud Console → APIs & Services → Credentials → **Create OAuth clie
 
 ### 2. GitHub sign-in
 GitHub → Settings → Developer settings → **OAuth Apps** → New.
-- Homepage: `https://tasksbot.pages.dev`
+- Homepage: `https://aitask.pareops.in`
 - Callback URL: `https://tasksbot-api.tasksbot01.workers.dev/auth/github/callback`
 - Secrets: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
 
@@ -106,3 +106,9 @@ cd frontend && VITE_API_URL=https://tasksbot-api.tasksbot01.workers.dev npm run 
 ```
 
 Schema changes go in a new file under `backend/migrations/` (e.g. `0002_….sql`).
+
+## Custom domain
+
+The site is served at `aitask.pareops.in` through a CNAME to `tasksbot.pages.dev` (DNS on Route 53), set up under the Pages project → Custom domains. In `backend/wrangler.jsonc`:
+- `FRONTEND_URL` is the main domain. Sign-in redirects back to it, and links in emails and Slack messages point to it.
+- `EXTRA_ORIGINS` lists other origins allowed to call the API. Preview URLs under any listed `*.pages.dev` host are allowed automatically.

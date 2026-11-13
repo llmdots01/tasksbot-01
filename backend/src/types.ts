@@ -2,6 +2,8 @@ export interface Env {
   DB: D1Database;
 
   FRONTEND_URL: string;
+  /** Comma-separated extra origins allowed to call the API (CORS). */
+  EXTRA_ORIGINS?: string;
   API_URL: string;
   EMAIL_FROM: string;
 
