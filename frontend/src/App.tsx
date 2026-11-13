@@ -74,20 +74,9 @@ export default function App() {
     e.preventDefault();
     navigate(to);
   };
-  const slackOff = !user.slack_connected;
 
   return (
     <div className="layout">
-      {slackOff && (
-        <div className="announce">
-          <span>
-            <strong>New:</strong> get task reminders right in Slack.
-          </span>
-          <a href="/settings" onClick={go("/settings")}>
-            Connect Slack →
-          </a>
-        </div>
-      )}
       <header className="topbar">
         <a className="brand" href="/" onClick={go("/")} aria-label="Task(AI)Do home">
           <Wordmark />

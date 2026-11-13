@@ -40,14 +40,6 @@ export default function Login() {
 
   return (
     <div className="landing">
-      <div className="announce">
-        <span>
-          <strong>New:</strong> Slack and email reminders for every task.
-        </span>
-        <a href="#signin" onClick={(e) => (e.preventDefault(), scrollToSignIn())}>
-          Get started free
-        </a>
-      </div>
       <header className="topbar">
         <span className="brand">
           <Wordmark />
@@ -72,27 +64,6 @@ export default function Login() {
           <span className="u-link">email and Slack</span>.
         </p>
 
-        <div className="social-proof">
-          <div className="dots" aria-hidden="true">
-            <span><MailIcon /></span>
-            <span><SlackLogo size={15} /></span>
-            <span><BellIcon /></span>
-            <span><ClockIcon /></span>
-          </div>
-          <span>
-            Reminders delivered <strong style={{ color: "var(--text)" }}>on time, every time</strong>
-          </span>
-        </div>
-
-        <div className="hero-cta">
-          <button className="btn navy pill" onClick={scrollToSignIn}>
-            Start Free <ArrowRightIcon width={16} height={16} />
-          </button>
-          <a className="btn primary pill" href="#features" onClick={(e) => (e.preventDefault(), document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }))}>
-            <SparkIcon width={16} height={16} /> See Features
-          </a>
-        </div>
-
         <div className="signin-box" id="signin">
           {error && <div className="alert error">{error}</div>}
           <a className={`btn oauth ${providers?.google === false ? "disabled" : ""}`} href={`${API_URL}/auth/google/login`}>
@@ -106,16 +77,6 @@ export default function Login() {
             <a href="/terms" onClick={(e) => (e.preventDefault(), navigate("/terms"))}>Terms of Service</a> and{" "}
             <a href="/privacy" onClick={(e) => (e.preventDefault(), navigate("/privacy"))}>Privacy Policy</a>.
           </p>
-        </div>
-      </section>
-
-      <section className="channels-strip">
-        <h3>Reminders wherever you work</h3>
-        <div className="channel-logos">
-          <div><MailIcon /> Email</div>
-          <div><SlackLogo size={30} /> Slack</div>
-          <div><GoogleLogo /> Google</div>
-          <div><GithubLogo /> GitHub</div>
         </div>
       </section>
 
