@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tasksbot-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  // Check for due reminders every minute.
+  "triggers": { "crons": ["* * * * *"] },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tasksbot-db",
+      // Created in the tasksbot01 Cloudflare account.
+      "database_id": "2b561463-a636-4dac-827a-e72de8015fa2",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Non-secret configuration. Secrets are set with `wrangler secret put` (see README).
+  "vars": {
+    "FRONTEND_URL": "https://tasksbot.pages.dev",
+    "API_URL": "https://tasksbot-api.tasksbot01.workers.dev",
+    "EMAIL_FROM": "TasksBot <onboarding@resend.dev>"
+  }
+}

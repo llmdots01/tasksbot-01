@@ -1,249 +1,108 @@
-# Task Reminder System
+# TasksBot: Task Reminder System on Cloudflare
 
-A comprehensive task management and reminder system built with FastAPI backend and Streamlit frontend.
+Create tasks with due dates and reminders. Get notified by **email** (via [Resend](https://resend.com)) and/or **Slack**. Sign in with **Google** or **GitHub**.
 
-## 🚀 Features
+| Part | Runs on | Live URL |
+|---|---|---|
+| API (`backend/`) | Cloudflare Workers + D1 + Cron Triggers | https://tasksbot-api.tasksbot01.workers.dev |
+| Web app (`frontend/`) | Cloudflare Pages (React + Vite) | https://tasksbot.pages.dev |
 
-- **Task Management**: Create, read, update, and delete tasks
-- **Priority Levels**: Set task priorities (low, medium, high)
-- **Due Dates**: Set due dates for tasks with overdue tracking
-- **Categories & Tags**: Organize tasks with categories and tags
-- **Reminder System**: Set custom reminders for tasks
-- **Status Tracking**: Track task status (pending, in_progress, completed)
-- **Dashboard**: View task statistics and recent activities
-- **Background Reminders**: Automatic reminder checking and notifications
-- **Modern UI**: Beautiful Streamlit interface
+This is a port of the original Flask + Streamlit app, which could not run on Cloudflare. The data model is the same: title, description, due date, priority, status, category, tags and reminder time. Each task now belongs to a signed-in user.
 
-## 📁 Project Structure
+## How it works
 
 ```
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI main application
-│   ├── models.py            # SQLAlchemy models
-│   ├── database.py          # Database configuration
-│   ├── crud.py              # Database operations
-│   └── schemas.py           # Pydantic schemas
-├── frontend/
-│   └── streamlit_app.py     # Streamlit frontend
-├── notifications/
-│   ├── __init__.py
-│   └── reminder_service.py  # Background reminder service
-├── requirements.txt
-├── run_api.py              # Script to run FastAPI
-├── run_frontend.py         # Script to run Streamlit
-└── README.md
+Browser (Pages SPA) ──Bearer JWT──▶ Worker API ──▶ D1 (users, tasks, notification_log)
+                                        ▲
+             Cron "* * * * *" ──────────┘──▶ Resend (email)  /  Slack incoming webhook
 ```
 
-## 🛠️ Installation
+- **Auth**: OAuth 2.0 with Google or GitHub. The Worker exchanges the code, links identities that share a verified email to the same user, and returns a 30-day HS256 JWT to the SPA in the URL fragment. The SPA sends it as `Authorization: Bearer …`.
+- **Reminders**: every minute, the cron job atomically claims tasks whose `reminder_time` or `due_date` has passed. It uses `UPDATE … RETURNING`, so overlapping runs never double-send. Each claimed task is sent on every channel the owner has enabled, and each attempt is logged.
+  - **Reminder**: fires at the reminder time you pick (presets: at due time, 15 min, 1 h or 1 day before).
+  - **Due alert**: fires once when the task becomes due. It doesn't fire for tasks created with a past due date.
+  - Changing a reminder or due time re-arms that notification. Completed tasks never notify.
+- **Email**: each user can turn email on or off in Settings. Sends use Resend's `Idempotency-Key`, so a retry can't send a duplicate.
+- **Slack**: users connect either with one-click **Add to Slack** (OAuth with the `incoming-webhook` scope, which lets them pick a channel or DM) or by pasting an incoming webhook URL. Only `https://hooks.slack.com/services/…` URLs are accepted.
+- **Settings page**: email and Slack toggles, test-send buttons, and a log of recent deliveries with error messages.
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Notify_Me_Of_My_Everydaywork
-   ```
+## API
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+All `/api/*` routes need `Authorization: Bearer <token>`.
 
-3. **Run the application**
+| Method | Path | |
+|---|---|---|
+| GET | `/auth/providers` | Which sign-in providers / Slack app are configured |
+| GET | `/auth/{google\|github}/login` | Start OAuth |
+| GET | `/api/me` | Current user + notification settings |
+| PUT | `/api/settings` | `{ email_notifications?, slack_notifications?, slack_webhook_url? }` |
+| POST | `/api/slack/ticket` | Returns URL to start "Add to Slack" |
+| DELETE | `/api/slack` | Disconnect Slack |
+| POST | `/api/notifications/test` | `{ channel: "email" \| "slack" }` |
+| GET | `/api/notifications/log` | Last 50 deliveries |
+| GET | `/api/tasks?status=&priority=&q=` | List tasks |
+| POST | `/api/tasks` | Create (`title`, `due_date` required) |
+| GET/PUT/DELETE | `/api/tasks/:id` | Read / update / delete |
+| GET | `/api/tasks/statistics` | Totals, overdue, due in 24 h, completion rate |
 
-   **Option 1: Run both backend and frontend separately**
-   
-   Terminal 1 (Backend):
-   ```bash
-   python run_api.py
-   ```
-   
-   Terminal 2 (Frontend):
-   ```bash
-   python run_frontend.py
-   ```
+Dates are ISO-8601 and stored in UTC. The browser shows them in local time.
 
-   **Option 2: Run with uvicorn and streamlit directly**
-   
-   Terminal 1 (Backend):
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-   
-   Terminal 2 (Frontend):
-   ```bash
-   streamlit run frontend/streamlit_app.py --server.port 8501
-   ```
+## Finishing setup (one-time)
 
-## 🌐 Access Points
+The Worker, D1 database, cron trigger and Pages site are already deployed. Sign-in and notifications start working once these secrets are set. Run each command from `backend/` with `npx wrangler secret put <NAME>`. You can also set them in the Cloudflare dashboard → Workers → tasksbot-api → Settings → Variables.
 
-- **Frontend**: http://localhost:8501
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Interactive API Docs**: http://localhost:8000/redoc
+### 1. Google sign-in
+Google Cloud Console → APIs & Services → Credentials → **Create OAuth client ID** (Web application).
+- Authorized redirect URI: `https://tasksbot-api.tasksbot01.workers.dev/auth/google/callback`
+- Secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 
-## 📋 API Endpoints
+### 2. GitHub sign-in
+GitHub → Settings → Developer settings → **OAuth Apps** → New.
+- Homepage: `https://tasksbot.pages.dev`
+- Callback URL: `https://tasksbot-api.tasksbot01.workers.dev/auth/github/callback`
+- Secrets: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
 
-### Tasks
-- `GET /tasks/` - Get all tasks
-- `POST /tasks/` - Create a new task
-- `GET /tasks/{task_id}` - Get a specific task
-- `PUT /tasks/{task_id}` - Update a task
-- `DELETE /tasks/{task_id}` - Delete a task
+### 3. Email via Resend
+- Create an API key → secret `RESEND_API_KEY`.
+- `EMAIL_FROM` in `backend/wrangler.jsonc` is `TasksBot <onboarding@resend.dev>`. That sandbox sender **only delivers to your own Resend account email**. To email other users, verify a domain in Resend, set e.g. `TasksBot <reminders@yourdomain.com>`, then redeploy.
 
-### Task Properties
-- **title** (required): Task title
-- **description**: Task description
-- **due_date**: Due date and time
-- **priority**: low, medium, high
-- **status**: pending, in_progress, completed
-- **category**: Task category
-- **tags**: Comma-separated tags
-- **is_reminder_set**: Boolean for reminder status
-- **reminder_time**: When to send reminder
+### 4. Slack "Add to Slack" (optional)
+Pasting a webhook URL works without this. For the one-click button:
+api.slack.com/apps → **Create New App** → OAuth & Permissions:
+- Redirect URL: `https://tasksbot-api.tasksbot01.workers.dev/integrations/slack/callback`
+- Bot token scope: `incoming-webhook`
+- Enable **Manage Distribution** if people outside your workspace will use it.
+- Secrets: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`
 
-## ⏰ Reminder System
+`JWT_SECRET` is already set to a random value. Rotating it signs everyone out.
 
-The system includes a background reminder service that:
+### 5. Auto-deploy from GitHub
+Add the repository secrets `CLOUDFLARE_API_TOKEN` (permissions: Workers Scripts Edit, Cloudflare Pages Edit, D1 Edit) and `CLOUDFLARE_ACCOUNT_ID` = `22b711acfaab8d8ad645efa3a9702891`. Every push to `main` then runs D1 migrations, deploys the Worker, and builds and deploys the Pages site ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
 
-- Checks for due reminders every minute
-- Logs reminders to `reminders.log`
-- Supports multiple notification methods (email, SMS, webhooks, desktop)
-- Can be extended with custom notification providers
-
-### Reminder Logs
-- Reminders are logged to `reminder_service.log`
-- Individual reminders are logged to `reminders.log`
-
-## 🎨 Frontend Features
-
-### Dashboard
-- Task statistics (total, pending, completed, overdue)
-- Recent tasks overview
-- Quick task management
-
-### Task Management
-- Add new tasks with all properties
-- View and filter tasks by status, priority, and overdue status
-- Mark tasks as complete
-- Delete tasks
-- Set reminders for tasks
-
-### Reminder Management
-- Set custom reminders for tasks
-- View reminder status
-- Manage reminder settings
-
-## 🗄️ Database
-
-The application uses SQLite as the default database:
-- Database file: `task_reminder.db`
-- Automatically created on first run
-- Tables created automatically
-
-## 🔧 Configuration
-
-### Environment Variables
-You can configure the application using environment variables:
+## Local development
 
 ```bash
-# Database
-DATABASE_URL=sqlite:///./task_reminder.db
-
-# API Settings
-API_HOST=0.0.0.0
-API_PORT=8000
-
-# Frontend Settings
-FRONTEND_PORT=8501
+cd backend
+npm install
+cp .dev.vars.example .dev.vars        # fill in what you have; JWT_SECRET is required
+npm run db:migrate:local
+npm run dev                            # http://localhost:8787  (cron: curl "localhost:8787/__scheduled?cron=*+*+*+*+*")
 ```
 
-### Customization
-- **Notification Methods**: Extend `reminder_service.py` to add email, SMS, or webhook notifications
-- **Database**: Change `database.py` to use PostgreSQL, MySQL, or other databases
-- **UI**: Customize the Streamlit interface in `streamlit_app.py`
-
-## 🚀 Deployment
-
-### Local Development
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run backend
-python run_api.py
-
-# Run frontend (in another terminal)
-python run_frontend.py
+cd frontend
+npm install
+cp .env.example .env.local             # VITE_API_URL=http://localhost:8787
+npm run dev                            # http://localhost:5173
 ```
 
-### Production Deployment
-1. Use a production WSGI server like Gunicorn
-2. Set up a reverse proxy (Nginx)
-3. Use a production database (PostgreSQL)
-4. Configure environment variables
-5. Set up proper logging
+For local OAuth, also register `http://localhost:8787/auth/{google,github}/callback` with each provider.
 
-## 📝 Usage Examples
+## Manual deploy
 
-### Creating a Task via API
 ```bash
-curl -X POST "http://localhost:8000/tasks/" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "title": "Complete project report",
-       "description": "Finish the quarterly project report",
-       "due_date": "2024-01-15T17:00:00",
-       "priority": "high",
-       "category": "Work",
-       "tags": "report,quarterly,deadline"
-     }'
+cd backend && npx wrangler d1 migrations apply tasksbot-db --remote && npx wrangler deploy
+cd frontend && VITE_API_URL=https://tasksbot-api.tasksbot01.workers.dev npm run deploy
 ```
 
-### Setting a Reminder
-```bash
-curl -X PUT "http://localhost:8000/tasks/1" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "is_reminder_set": true,
-       "reminder_time": "2024-01-15T16:00:00"
-     }'
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Port already in use**
-   - Change ports in `run_api.py` or `run_frontend.py`
-   - Kill existing processes using the ports
-
-2. **Database errors**
-   - Delete `task_reminder.db` to reset the database
-   - Check database permissions
-
-3. **Import errors**
-   - Ensure all dependencies are installed: `pip install -r requirements.txt`
-   - Check Python path and virtual environment
-
-4. **Frontend not connecting to backend**
-   - Ensure backend is running on http://localhost:8000
-   - Check CORS settings in `app/main.py`
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the API documentation at http://localhost:8000/docs
-- Review the logs in `reminder_service.log` and `reminders.log` 
+Schema changes go in a new file under `backend/migrations/` (e.g. `0002_….sql`).

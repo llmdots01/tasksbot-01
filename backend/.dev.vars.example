@@ -1,0 +1,13 @@
+# Copy to .dev.vars for local development (never commit .dev.vars)
+FRONTEND_URL=http://localhost:5173
+API_URL=http://localhost:8787
+JWT_SECRET=change-me-to-a-long-random-string
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+RESEND_API_KEY=
+EMAIL_FROM=TasksBot <onboarding@resend.dev>
+# Optional: enables the one-click "Add to Slack" button
+SLACK_CLIENT_ID=
+SLACK_CLIENT_SECRET=
