@@ -36,7 +36,15 @@ export default function Login() {
       .catch(() => {});
   }, []);
 
-  const scrollToSignIn = () => document.getElementById("signin")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  // Open the sign-in dialog straight away if we came back from a failed sign-in.
+  const [signinOpen, setSigninOpen] = useState(() => Boolean(error));
+
+  useEffect(() => {
+    if (!signinOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSigninOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [signinOpen]);
 
   return (
     <div className="landing">
@@ -47,7 +55,7 @@ export default function Login() {
         <nav />
         <div className="topbar-right">
           <ThemeButton />
-          <button className="btn primary sm" onClick={scrollToSignIn}>
+          <button className="btn primary sm" onClick={() => setSigninOpen(true)} aria-haspopup="dialog">
             Login <ArrowRightIcon width={15} height={15} />
           </button>
         </div>
@@ -63,21 +71,6 @@ export default function Login() {
           The simplest way to stay on top of your work, with <span className="u-link">smart reminders</span> sent straight to your{" "}
           <span className="u-link">email and Slack</span>.
         </p>
-
-        <div className="signin-box" id="signin">
-          {error && <div className="alert error">{error}</div>}
-          <a className={`btn oauth ${providers?.google === false ? "disabled" : ""}`} href={`${API_URL}/auth/google/login`}>
-            <GoogleLogo /> Continue with Google
-          </a>
-          <a className={`btn oauth ${providers?.github === false ? "disabled" : ""}`} href={`${API_URL}/auth/github/login`}>
-            <GithubLogo /> Continue with GitHub
-          </a>
-          <p className="muted small signin-legal">
-            By continuing you agree to our{" "}
-            <a href="/terms" onClick={(e) => (e.preventDefault(), navigate("/terms"))}>Terms of Service</a> and{" "}
-            <a href="/privacy" onClick={(e) => (e.preventDefault(), navigate("/privacy"))}>Privacy Policy</a>.
-          </p>
-        </div>
       </section>
 
       <section className="features-wrap" id="features">
@@ -95,6 +88,32 @@ export default function Login() {
           </div>
         </div>
       </section>
+      {signinOpen && (
+        <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setSigninOpen(false)}>
+          <div className="modal card signin-dialog" role="dialog" aria-modal="true" aria-labelledby="signin-title">
+            <button type="button" className="dialog-close" aria-label="Close" onClick={() => setSigninOpen(false)}>
+              ×
+            </button>
+            <h2 id="signin-title">
+              Sign in to <Wordmark />
+            </h2>
+            <p className="muted">Use your Google or GitHub account. No new password needed.</p>
+            {error && <div className="alert error">{error}</div>}
+            <a className={`btn oauth ${providers?.google === false ? "disabled" : ""}`} href={`${API_URL}/auth/google/login`} autoFocus>
+              <GoogleLogo /> Continue with Google
+            </a>
+            <a className={`btn oauth ${providers?.github === false ? "disabled" : ""}`} href={`${API_URL}/auth/github/login`}>
+              <GithubLogo /> Continue with GitHub
+            </a>
+            <p className="muted small signin-legal">
+              By continuing you agree to our{" "}
+              <a href="/terms" onClick={(e) => (e.preventDefault(), navigate("/terms"))}>Terms of Service</a> and{" "}
+              <a href="/privacy" onClick={(e) => (e.preventDefault(), navigate("/privacy"))}>Privacy Policy</a>.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
