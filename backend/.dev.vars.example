@@ -7,7 +7,7 @@ GOOGLE_CLIENT_SECRET=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 RESEND_API_KEY=
-EMAIL_FROM=TasksBot <onboarding@resend.dev>
+EMAIL_FROM='"Task(AI)Do" <onboarding@resend.dev>'
 # Optional: enables the one-click "Add to Slack" button
 SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=

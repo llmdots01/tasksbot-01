@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, getToken, setToken, setUnauthorizedHandler, type User } from "./api";
 import { navigate, usePath } from "./router";
+import { ThemeButton } from "./theme";
+import { GearIcon, GridIcon, ListIcon, LogOutIcon, UserIcon, Wordmark } from "./icons";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
 
-const NAV = [
-  { path: "/", label: "Dashboard" },
-  { path: "/tasks", label: "Tasks" },
-  { path: "/settings", label: "Settings" },
+const NAV: { path: string; label: string; icon: ReactNode }[] = [
+  { path: "/", label: "Dashboard", icon: <GridIcon /> },
+  { path: "/tasks", label: "Tasks", icon: <ListIcon /> },
+  { path: "/settings", label: "Settings", icon: <GearIcon /> },
 ];
 
 // OAuth redirect lands on /auth/callback#token=... — capture it before the first render.
@@ -61,33 +63,50 @@ export default function App() {
     setUser(null);
     navigate("/login", true);
   };
+  const go = (to: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(to);
+  };
+  const slackOff = !user.slack_connected;
 
   return (
     <div className="layout">
+      {slackOff && (
+        <div className="announce">
+          <span>
+            <strong>New:</strong> get task reminders right in Slack.
+          </span>
+          <a href="/settings" onClick={go("/settings")}>
+            Connect Slack →
+          </a>
+        </div>
+      )}
       <header className="topbar">
-        <a className="brand" href="/" onClick={(e) => (e.preventDefault(), navigate("/"))}>
-          <img src="/favicon.svg" alt="" width={24} height={24} /> TasksBot
+        <a className="brand" href="/" onClick={go("/")} aria-label="Task(AI)Do home">
+          <Wordmark />
         </a>
         <nav>
           {NAV.map((n) => (
-            <a
-              key={n.path}
-              href={n.path}
-              className={path === n.path ? "active" : ""}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(n.path);
-              }}
-            >
+            <a key={n.path} href={n.path} className={path === n.path ? "active" : ""} onClick={go(n.path)}>
+              {n.icon}
               {n.label}
             </a>
           ))}
         </nav>
-        <div className="user">
-          {user.avatar_url && <img src={user.avatar_url} alt="" className="avatar" referrerPolicy="no-referrer" />}
-          <span className="user-name">{user.name ?? user.email}</span>
-          <button className="btn ghost sm" onClick={logout}>
-            Sign out
+        <div className="topbar-right">
+          <ThemeButton />
+          <div className="user-chip" title={user.email}>
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="avatar" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="avatar fallback">
+                <UserIcon width={16} height={16} />
+              </span>
+            )}
+            <span className="user-name">{user.name ?? user.email}</span>
+          </div>
+          <button className="icon-btn" onClick={logout} aria-label="Sign out" title="Sign out">
+            <LogOutIcon />
           </button>
         </div>
       </header>

@@ -78,7 +78,7 @@ settingsRoutes.post("/notifications/test", async (c) => {
   const user = await loadUser(c.env.DB, c.var.userId);
   const sample = {
     title: "Sample task",
-    description: "This is a test notification from TasksBot.",
+    description: "This is a test notification from Task(AI)Do.",
     due_date: new Date(Date.now() + 3_600_000).toISOString(),
     priority: "Medium",
   };
@@ -119,7 +119,7 @@ export const slackRoutes = new Hono<AppEnv>();
 
 slackRoutes.get("/install", async (c) => {
   const ticket = await verifyJwt<{ sub: string; purpose: string }>(c.req.query("ticket") ?? "", c.env.JWT_SECRET);
-  if (!ticket || ticket.purpose !== "slack-ticket") return c.text("Link expired — go back to TasksBot settings and try again.", 400);
+  if (!ticket || ticket.purpose !== "slack-ticket") return c.text("Link expired — go back to Task(AI)Do settings and try again.", 400);
 
   // Bind the flow to this browser so a third party can't complete it for someone else.
   const nonce = randomToken(16);

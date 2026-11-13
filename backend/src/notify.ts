@@ -24,7 +24,7 @@ function escapeSlack(s: string): string {
 
 function headline(kind: NotificationKind, task: Pick<TaskRow, "title">): string {
   if (kind === "due") return `Task due now: ${task.title}`;
-  if (kind === "test") return "TasksBot test notification";
+  if (kind === "test") return "Task(AI)Do test notification";
   return `Reminder: ${task.title}`;
 }
 
@@ -61,7 +61,7 @@ export async function sendEmail(
 <div style="max-width:520px;margin:auto;background:#fff;border-radius:12px;padding:24px;border:1px solid #e5e7eb">
 <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${escapeHtml(subject)}</h2>
 ${rows.join("\n")}
-<p style="margin:20px 0 0"><a href="${escapeHtml(appUrl)}/tasks" style="background:#4f46e5;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open TasksBot</a></p>
+<p style="margin:20px 0 0"><a href="${escapeHtml(appUrl)}/tasks" style="background:#22c55e;color:#04150a;padding:10px 16px;border-radius:8px;text-decoration:none">Open Task(AI)Do</a></p>
 <p style="margin:20px 0 0;font-size:12px;color:#6b7280">You can turn off email notifications in <a href="${escapeHtml(appUrl)}/settings">Settings</a>.</p>
 </div></body></html>`;
   const text = [subject, task.description, task.due_date ? `Due: ${emailDate(task.due_date)}` : "", `${appUrl}/tasks`]
@@ -102,7 +102,7 @@ export async function sendSlack(webhookUrl: string, kind: NotificationKind, task
   if (fields.length) blocks.push({ type: "section", fields });
   blocks.push({
     type: "actions",
-    elements: [{ type: "button", text: { type: "plain_text", text: "Open TasksBot" }, url: `${appUrl.replace(/\/$/, "")}/tasks` }],
+    elements: [{ type: "button", text: { type: "plain_text", text: "Open Task(AI)Do" }, url: `${appUrl.replace(/\/$/, "")}/tasks` }],
   });
 
   const res = await fetch(webhookUrl, {

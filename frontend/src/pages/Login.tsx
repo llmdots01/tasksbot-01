@@ -1,5 +1,27 @@
 import { useEffect, useState } from "react";
 import { api, API_URL, type Providers } from "../api";
+import { ThemeButton } from "../theme";
+import {
+  ArrowRightIcon,
+  BellIcon,
+  ClockIcon,
+  GithubLogo,
+  GoogleLogo,
+  MailIcon,
+  ShieldIcon,
+  SlackLogo,
+  SparkIcon,
+  Wordmark,
+} from "../icons";
+
+const FEATURES = [
+  { icon: <BellIcon />, title: "Reminders you choose", text: "Pick an exact time or a preset (15 min, 1 hour or 1 day before), plus an alert when the task is due." },
+  { icon: <MailIcon />, title: "Email, your way", text: "Clean reminder emails delivered by Resend. Switch them on or off any time from Settings." },
+  { icon: <SlackLogo size={20} />, title: "Slack notifications", text: "Add Task(AI)Do to Slack in one click and pick the channel or DM where reminders should land." },
+  { icon: <ClockIcon />, title: "Never double-pinged", text: "Each reminder is sent exactly once, even if you edit the task. Completed tasks stay quiet." },
+  { icon: <SparkIcon />, title: "Priorities & tags", text: "Low to Critical priorities, categories and tags, plus search and filters to find anything fast." },
+  { icon: <ShieldIcon />, title: "Sign in securely", text: "Use your Google or GitHub account. No new password to remember, and your tasks stay private to you." },
+];
 
 export default function Login() {
   const [providers, setProviders] = useState<Providers | null>(null);
@@ -12,33 +34,100 @@ export default function Login() {
   }, []);
 
   const none = providers && !providers.google && !providers.github;
+  const scrollToSignIn = () => document.getElementById("signin")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
-    <div className="login-page">
-      <div className="card login-card">
-        <img src="/favicon.svg" alt="" width={48} height={48} />
-        <h1>TasksBot</h1>
-        <p className="muted">Tasks and reminders, delivered to your email and Slack.</p>
-        {error && <div className="alert error">{error}</div>}
-        <div className="login-buttons">
-          <a className={`btn oauth ${providers?.google === false ? "disabled" : ""}`} href={`${API_URL}/auth/google/login`}>
-            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-              <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-              <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
-              <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
-            </svg>
-            Continue with Google
-          </a>
-          <a className={`btn oauth ${providers?.github === false ? "disabled" : ""}`} href={`${API_URL}/auth/github/login`}>
-            <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-            </svg>
-            Continue with GitHub
+    <div className="landing">
+      <div className="announce">
+        <span>
+          <strong>New:</strong> Slack and email reminders for every task.
+        </span>
+        <a href="#signin" onClick={(e) => (e.preventDefault(), scrollToSignIn())}>
+          Get started free
+        </a>
+      </div>
+      <header className="topbar">
+        <span className="brand">
+          <Wordmark />
+        </span>
+        <nav />
+        <div className="topbar-right">
+          <ThemeButton />
+          <button className="btn primary sm" onClick={scrollToSignIn}>
+            Login <ArrowRightIcon width={15} height={15} />
+          </button>
+        </div>
+      </header>
+
+      <section className="hero">
+        <h1>
+          Never Miss <span className="grad-text grad-underline">Another Task</span>
+          <br />
+          Again
+        </h1>
+        <p className="lede">
+          The simplest way to stay on top of your work, with <span className="u-link">smart reminders</span> sent straight to your{" "}
+          <span className="u-link">email and Slack</span>.
+        </p>
+
+        <div className="social-proof">
+          <div className="dots" aria-hidden="true">
+            <span><MailIcon /></span>
+            <span><SlackLogo size={15} /></span>
+            <span><BellIcon /></span>
+            <span><ClockIcon /></span>
+          </div>
+          <span>
+            Reminders delivered <strong style={{ color: "var(--text)" }}>on time, every time</strong>
+          </span>
+        </div>
+
+        <div className="hero-cta">
+          <button className="btn navy pill" onClick={scrollToSignIn}>
+            Start Free <ArrowRightIcon width={16} height={16} />
+          </button>
+          <a className="btn primary pill" href="#features" onClick={(e) => (e.preventDefault(), document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }))}>
+            <SparkIcon width={16} height={16} /> See Features
           </a>
         </div>
-        {none && <p className="muted small">No sign-in providers are configured on the API yet. See the README.</p>}
-      </div>
+
+        <div className="signin-box" id="signin">
+          {error && <div className="alert error">{error}</div>}
+          <a className={`btn oauth ${providers?.google === false ? "disabled" : ""}`} href={`${API_URL}/auth/google/login`}>
+            <GoogleLogo /> Continue with Google
+          </a>
+          <a className={`btn oauth ${providers?.github === false ? "disabled" : ""}`} href={`${API_URL}/auth/github/login`}>
+            <GithubLogo /> Continue with GitHub
+          </a>
+          {none && <p className="muted small">Sign-in isn't configured on the server yet. See the README.</p>}
+        </div>
+      </section>
+
+      <section className="channels-strip">
+        <h3>Reminders wherever you work</h3>
+        <div className="channel-logos">
+          <div><MailIcon /> Email</div>
+          <div><SlackLogo size={30} /> Slack</div>
+          <div><GoogleLogo /> Google</div>
+          <div><GithubLogo /> GitHub</div>
+        </div>
+      </section>
+
+      <section className="features-wrap" id="features">
+        <div className="panel">
+          <h2>Everything You Need</h2>
+          <p className="muted">A focused task list with reminders that reach you on the channels you already use.</p>
+          <div className="features">
+            {FEATURES.map((f) => (
+              <div className="feature" key={f.title}>
+                <div className="f-icon">{f.icon}</div>
+                <h4>{f.title}</h4>
+                <p>{f.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

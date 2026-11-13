@@ -12,6 +12,7 @@ import {
   type Task,
   type TaskInput,
 } from "../api";
+import { PlusIcon } from "../icons";
 
 type Editing = Task | "new" | null;
 
@@ -68,7 +69,7 @@ export default function Tasks() {
       <div className="page-head">
         <h1>Tasks</h1>
         <button className="btn primary" onClick={() => setEditing("new")}>
-          + New task
+          <PlusIcon width={16} height={16} /> New task
         </button>
       </div>
 

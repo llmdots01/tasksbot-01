@@ -1,10 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-accent="green">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Task(AI)Do: tasks and smart reminders delivered to your email and Slack." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>TasksBot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+    <title>Task(AI)Do</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a flash.
+      try {
+        var m = localStorage.getItem("taskaido_mode"), a = localStorage.getItem("taskaido_accent");
+        if (m === "light" || m === "dark") document.documentElement.dataset.theme = m;
+        if (["green", "orange", "coral", "blue", "purple"].indexOf(a) >= 0) document.documentElement.dataset.accent = a;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

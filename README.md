@@ -1,4 +1,4 @@
-# TasksBot: Task Reminder System on Cloudflare
+# Task(AI)Do: Task Reminder System on Cloudflare
 
 Create tasks with due dates and reminders. Get notified by **email** (via [Resend](https://resend.com)) and/or **Slack**. Sign in with **Google** or **GitHub**.
 
