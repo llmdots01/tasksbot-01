@@ -25,7 +25,14 @@ export default function Settings({
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    if (location.search) history.replaceState(null, "", "/settings");
+    if (location.search) history.replaceState(null, "", "/settings" + location.hash);
+    // Dashboard chips link to /settings#email, #slack or #push.
+    const target = location.hash ? document.getElementById(location.hash.slice(1)) : null;
+    if (target) {
+      requestAnimationFrame(() => target.scrollIntoView({ behavior: "smooth", block: "center" }));
+      target.classList.add("flash");
+      setTimeout(() => target.classList.remove("flash"), 1600);
+    }
     api<Providers>("/auth/providers").then(setProviders).catch(() => {});
     // Refresh user after a Slack redirect.
     api<User>("/api/me").then(onUserChange).catch(() => {});
@@ -76,7 +83,7 @@ export default function Settings({
       </div>
       {msg && <div className={`alert ${msg.kind === "ok" ? "success" : "error"}`}>{msg.text}</div>}
 
-      <section className="card">
+      <section className="card" id="email">
         <div className="setting">
           <div>
             <h2>
@@ -93,7 +100,7 @@ export default function Settings({
         </button>
       </section>
 
-      <section className="card">
+      <section className="card" id="slack">
         <div className="setting">
           <div>
             <h2>
@@ -289,7 +296,7 @@ function PhoneNotifications() {
   else if (state === "denied") description = "Notifications are blocked for this site. Allow them in your browser or phone settings, then come back here.";
 
   return (
-    <section className="card">
+    <section className="card" id="push">
       <div className="setting">
         <div>
           <h2>
