@@ -17,6 +17,37 @@ import { onDataChanged } from "../events";
 
 type Editing = Task | "new" | null;
 
+/** Quick views, linkable as /tasks?view=… (used by the Dashboard tiles). */
+export type TaskView = "" | "open" | "due_soon" | "overdue" | "completed";
+const VIEWS: { id: TaskView; label: string }[] = [
+  { id: "", label: "All" },
+  { id: "open", label: "Open" },
+  { id: "due_soon", label: "Due in 24h" },
+  { id: "overdue", label: "Overdue" },
+  { id: "completed", label: "Completed" },
+];
+const readView = (): TaskView => {
+  const v = new URLSearchParams(location.search).get("view");
+  return VIEWS.some((x) => x.id === v) ? (v as TaskView) : "";
+};
+
+function inView(t: Task, view: TaskView, now: number): boolean {
+  const due = t.due_date ? new Date(t.due_date).getTime() : null;
+  const open = t.status !== "completed";
+  switch (view) {
+    case "open":
+      return open;
+    case "due_soon":
+      return open && due !== null && due >= now && due < now + 86_400_000;
+    case "overdue":
+      return open && due !== null && due < now;
+    case "completed":
+      return !open;
+    default:
+      return true;
+  }
+}
+
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,14 +55,39 @@ export default function Tasks() {
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [q, setQ] = useState("");
-  // The installed app's "New task" shortcut opens /tasks?new=1.
-  const [editing, setEditing] = useState<Editing>(() => {
-    if (new URLSearchParams(location.search).get("new")) {
-      history.replaceState(null, "", "/tasks");
-      return "new";
-    }
-    return null;
-  });
+  const [view, setView] = useState<TaskView>(readView);
+  // /tasks?new=1 (Dashboard button, home-screen shortcut) opens the New task form.
+  const [editing, setEditing] = useState<Editing>(() => (new URLSearchParams(location.search).get("new") ? "new" : null));
+
+  // Keep the view in sync with the URL (Dashboard links, back/forward), and open /tasks?task=ID.
+  useEffect(() => {
+    const sync = () => {
+      const params = new URLSearchParams(location.search);
+      setView(readView());
+      if (params.get("new")) setEditing("new");
+      const id = Number(params.get("task"));
+      if (id) {
+        api<Task>(`/api/tasks/${id}`)
+          .then(setEditing)
+          .catch(() => setError("That task no longer exists."));
+      }
+      // Drop one-shot params so a refresh doesn't reopen the form.
+      if (params.has("new") || params.has("task")) {
+        params.delete("new");
+        params.delete("task");
+        const rest = params.toString();
+        history.replaceState(null, "", `/tasks${rest ? `?${rest}` : ""}`);
+      }
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
+
+  const chooseView = (v: TaskView) => {
+    setView(v);
+    history.replaceState(null, "", v ? `/tasks?view=${v}` : "/tasks");
+  };
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -74,6 +130,9 @@ export default function Tasks() {
     }
   };
 
+  const now = Date.now();
+  const shown = tasks.filter((t) => inView(t, view, now));
+
   return (
     <div className="stack">
       <div className="page-head">
@@ -81,6 +140,14 @@ export default function Tasks() {
         <button className="btn primary" onClick={() => setEditing("new")}>
           <PlusIcon width={16} height={16} /> New task
         </button>
+      </div>
+
+      <div className="segmented view-tabs" role="tablist" aria-label="Task view">
+        {VIEWS.map((v) => (
+          <button key={v.id || "all"} role="tab" aria-selected={view === v.id} className={view === v.id ? "on" : ""} onClick={() => chooseView(v.id)}>
+            {v.label}
+          </button>
+        ))}
       </div>
 
       <div className="filters">
@@ -105,10 +172,18 @@ export default function Tasks() {
 
       {loading ? (
         <p className="muted">Loading…</p>
-      ) : tasks.length === 0 ? (
+      ) : shown.length === 0 ? (
         <div className="card empty">
-          <p>No tasks{status || priority || q ? " match these filters" : " yet"}.</p>
-          {!status && !priority && !q && (
+          <p>
+            {view === "overdue"
+              ? "Nothing overdue. Nice."
+              : view === "due_soon"
+                ? "Nothing due in the next 24 hours."
+                : view === "completed"
+                  ? "No completed tasks yet."
+                  : `No tasks${view || status || priority || q ? " match these filters" : " yet"}.`}
+          </p>
+          {!view && !status && !priority && !q && (
             <button className="btn primary" onClick={() => setEditing("new")}>
               Create your first task
             </button>
@@ -116,7 +191,7 @@ export default function Tasks() {
         </div>
       ) : (
         <ul className="task-list">
-          {tasks.map((t) => (
+          {shown.map((t) => (
             <TaskRow key={t.id} task={t} onEdit={() => setEditing(t)} onUpdate={(b) => update(t.id, b)} onDelete={() => remove(t)} />
           ))}
         </ul>
