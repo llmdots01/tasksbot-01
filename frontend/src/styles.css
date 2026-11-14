@@ -480,3 +480,13 @@ label { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; fon
   /* No browser chrome around the installed app, so avoid accidental text selection on taps. */
   .topbar, .profile-btn, .btn, .menu-item { -webkit-user-select: none; user-select: none; }
 }
+.push-row { align-items: center; }
+
+/* Phones: 16px form text stops iOS zooming in on focus (which also shifted the AI panel). */
+@media (max-width: 760px) {
+  input, select, textarea { font-size: 16px; }
+  .ai-head-actions select { font-size: 16px; padding: 4px 6px; }
+  .ai-panel { overscroll-behavior: contain; }
+  .ai-messages { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .ai-title .muted { display: none; }
+}

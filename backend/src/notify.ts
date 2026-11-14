@@ -1,7 +1,8 @@
 import type { Env, TaskRow, UserRow } from "./types";
+import { sendPushToUser } from "./push";
 
 export type NotificationKind = "reminder" | "due" | "test";
-type Channel = "email" | "slack";
+type Channel = "email" | "slack" | "push";
 
 const BATCH = 50;
 
@@ -139,7 +140,26 @@ export async function notifyUser(env: Env, user: UserRow, task: TaskRow, kind: N
         .catch((e) => log(env, user.id, task.id, "slack", kind, String(e?.message ?? e))),
     );
   }
+  // Phone/browser push to every device the user enabled (skipped silently if none).
+  jobs.push(
+    sendPushToUser(env, user.id, pushMessage(kind, task), `task-${task.id}`)
+      .then((r) => (r ? log(env, user.id, task.id, "push", kind, r.sent ? undefined : r.error ?? "No device accepted the notification") : undefined))
+      .catch((e) => log(env, user.id, task.id, "push", kind, String(e?.message ?? e))),
+  );
   await Promise.all(jobs);
+}
+
+/** Notification shown by the service worker. Dates are formatted on the device, in its own time zone. */
+export function pushMessage(kind: NotificationKind, task: Partial<TaskRow> & Pick<TaskRow, "title">): Record<string, unknown> {
+  return {
+    title: headline(kind, task),
+    body: task.description ?? undefined,
+    due: task.due_date ?? undefined,
+    priority: task.priority ?? undefined,
+    kind,
+    tag: task.id ? `task-${task.id}` : `test-${Date.now()}`,
+    url: "/tasks",
+  };
 }
 
 /**

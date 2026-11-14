@@ -97,7 +97,7 @@ export interface LogEntry {
   id: number;
   task_id: number | null;
   task_title: string | null;
-  channel: "email" | "slack";
+  channel: "email" | "slack" | "push";
   kind: "reminder" | "due" | "test";
   success: boolean;
   error: string | null;

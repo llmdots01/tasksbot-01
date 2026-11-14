@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { api, formatDate, relativeTime, type Stats, type Task, type User } from "../api";
 import { navigate } from "../router";
-import { MailIcon, PlusIcon, SlackLogo } from "../icons";
+import { BellIcon, MailIcon, PlusIcon, SlackLogo } from "../icons";
 import { onDataChanged } from "../events";
 
 export default function Dashboard({ user }: { user: User }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [upcoming, setUpcoming] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pushDevices, setPushDevices] = useState<number | null>(null);
+
+  useEffect(() => {
+    api<{ devices: number }>("/api/push/status").then((s) => setPushDevices(s.devices)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const load = () =>
@@ -22,7 +27,7 @@ export default function Dashboard({ user }: { user: User }) {
   }, []);
 
   const slackOn = user.slack_notifications && user.slack_connected;
-  const noChannels = !user.email_notifications && !slackOn;
+  const noChannels = !user.email_notifications && !slackOn && !pushDevices;
   const first = user.name?.split(" ")[0];
   const goSettings = (e: React.MouseEvent) => (e.preventDefault(), navigate("/settings"));
 
@@ -95,6 +100,11 @@ export default function Dashboard({ user }: { user: User }) {
             <span className={`chip ${slackOn ? "on" : ""}`}>
               <SlackLogo size={15} /> Slack {user.slack_connected ? (user.slack_notifications ? "on" : "off") : "not connected"}
             </span>
+            {pushDevices !== null && (
+              <span className={`chip ${pushDevices > 0 ? "on" : ""}`}>
+                <BellIcon /> Push {pushDevices > 0 ? `on (${pushDevices} device${pushDevices === 1 ? "" : "s"})` : "off"}
+              </span>
+            )}
           </div>
           <p className="muted small" style={{ marginBottom: 0 }}>
             <a href="/settings" onClick={goSettings}>

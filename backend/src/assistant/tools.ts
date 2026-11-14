@@ -3,6 +3,7 @@ import { PRIORITIES, STATUSES } from "../types";
 import { createTask, deleteTask, getTask, listTasks, taskStats, updateTask, ValidationError, type TaskInput } from "../tasks";
 import { disconnectSlack, loadUser, notificationLog, sendTestNotification, SettingsError, updateNotificationSettings } from "../settings";
 import { publicUser } from "../auth";
+import { pushDeviceCount } from "../push";
 
 /** Provider-neutral tool definition (JSON Schema subset understood by both Gemini and OpenAI-style APIs). */
 export interface ToolDef {
@@ -82,7 +83,8 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "get_notification_settings",
-    description: "The user's email address and whether email and Slack notifications are on and Slack is connected.",
+    description:
+      "The user's email address, whether email and Slack notifications are on and Slack is connected, and how many devices have phone push notifications enabled.",
   },
   {
     name: "update_notification_settings",
@@ -100,7 +102,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "send_test_notification",
     description: "Send a test notification to check a channel works.",
-    parameters: { type: "object", properties: { channel: { type: "string", enum: ["email", "slack"] } }, required: ["channel"] },
+    parameters: { type: "object", properties: { channel: { type: "string", enum: ["email", "slack", "push"] } }, required: ["channel"] },
   },
   {
     name: "disconnect_slack",
@@ -112,7 +114,7 @@ export const TOOLS: ToolDef[] = [
     description: "Recent notification deliveries (reminders, due alerts, tests) with success or error.",
     parameters: {
       type: "object",
-      properties: { channel: { type: "string", enum: ["email", "slack"] }, limit: { type: "integer" } },
+      properties: { channel: { type: "string", enum: ["email", "slack", "push"] }, limit: { type: "integer" } },
     },
   },
 ];
@@ -206,7 +208,7 @@ export async function runTool(
         return { result: { deleted: existing.title }, action: { tool: name, label: `Deleted “${existing.title}”` } };
       }
       case "get_notification_settings":
-        return { result: publicUser(await loadUser(db, userId)) };
+        return { result: { ...publicUser(await loadUser(db, userId)), push_devices: await pushDeviceCount(db, userId) } };
       case "update_notification_settings": {
         const body: Record<string, unknown> = {};
         for (const k of ["email_notifications", "slack_notifications", "slack_webhook_url"]) if (k in args) body[k] = args[k];

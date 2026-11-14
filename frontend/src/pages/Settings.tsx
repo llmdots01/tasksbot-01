@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type Providers, type User } from "../api";
-import { AlertIcon, MailIcon, SlackLogo, TrashIcon } from "../icons";
+import { AlertIcon, BellIcon, MailIcon, SlackLogo, TrashIcon } from "../icons";
+import { devicePushState, disablePush, enablePush, type PushState, type PushStatus } from "../push";
+import { InstallInstructions } from "../install";
 import { navigate } from "../router";
 
 export default function Settings({
@@ -160,6 +162,8 @@ export default function Settings({
         )}
       </section>
 
+      <PhoneNotifications />
+
       <p className="muted small">
         See every reminder and test that was sent in{" "}
         <a href="/history" onClick={(e) => (e.preventDefault(), navigate("/history"))}>
@@ -242,6 +246,90 @@ function DeleteAccount({ email, onDeleted }: { email: string; onDeleted: () => v
           </div>
         </form>
       )}
+    </section>
+  );
+}
+
+function PhoneNotifications() {
+  const [status, setStatus] = useState<PushStatus | null>(null);
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [installHelp, setInstallHelp] = useState(false);
+
+  const refresh = async () => {
+    const [st, ds] = await Promise.all([api<PushStatus>("/api/push/status").catch(() => null), devicePushState()]);
+    setStatus(st);
+    setState(ds);
+  };
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const act = async (key: string, fn: () => Promise<void>, ok?: string) => {
+    setBusy(key);
+    setMsg(null);
+    try {
+      await fn();
+      if (ok) setMsg({ kind: "ok", text: ok });
+    } catch (e) {
+      setMsg({ kind: "error", text: (e as Error).message });
+    } finally {
+      setBusy(null);
+      refresh();
+    }
+  };
+
+  const on = state === "on";
+  const others = status ? Math.max(0, status.devices - (on ? 1 : 0)) : 0;
+  let description: React.ReactNode = "Get reminders and due alerts as notifications on this phone or computer, even when the app is closed.";
+  if (status && !status.configured) description = "Push notifications aren't configured on the server yet.";
+  else if (state === "unsupported") description = "This browser doesn't support push notifications. Try Chrome, Edge, Firefox or Safari.";
+  else if (state === "ios-install") description = "On iPhone and iPad, notifications work once Task(AI)Do is added to your Home Screen. Install it, open it from the Home Screen, then turn this on.";
+  else if (state === "denied") description = "Notifications are blocked for this site. Allow them in your browser or phone settings, then come back here.";
+
+  return (
+    <section className="card">
+      <div className="setting">
+        <div>
+          <h2>
+            <BellIcon /> Phone notifications
+          </h2>
+          <p className="muted">{description}</p>
+        </div>
+        {status?.configured && (state === "on" || state === "off") && (
+          <Switch
+            checked={on}
+            disabled={busy !== null}
+            label="Phone notifications on this device"
+            onChange={(v) =>
+              act(v ? "enable" : "disable", () => (v ? enablePush(status.publicKey!) : disablePush()), v ? "Notifications are on for this device." : undefined)
+            }
+          />
+        )}
+      </div>
+      {msg && <div className={`alert ${msg.kind === "ok" ? "success" : "error"}`}>{msg.text}</div>}
+      <div className="btn-row push-row">
+        {state === "ios-install" && (
+          <button className="btn primary sm" onClick={() => setInstallHelp(true)}>
+            How to install
+          </button>
+        )}
+        {(on || others > 0) && (
+          <button className="btn outline sm" disabled={busy === "test"} onClick={() => act("test", async () => {
+            await api("/api/notifications/test", { method: "POST", body: JSON.stringify({ channel: "push" }) });
+          }, "Test notification sent. It should appear in a few seconds.")}>
+            {busy === "test" ? "Sending…" : "Send test notification"}
+          </button>
+        )}
+        {status && status.devices > 0 && (
+          <span className="muted small">
+            {on ? "On for this device" : "Off for this device"}
+            {others > 0 ? ` · ${others} other device${others === 1 ? "" : "s"}` : ""}
+          </span>
+        )}
+      </div>
+      {installHelp && <InstallInstructions ios onClose={() => setInstallHelp(false)} />}
     </section>
   );
 }

@@ -96,12 +96,43 @@ export function Assistant() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs, busy]);
 
+  // On touch screens, focusing the input pops the keyboard and makes the browser scroll the page,
+  // which pushed the panel header off-screen. Only auto-focus where there's a real keyboard.
+  const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+  const [viewport, setViewport] = useState<{ top: number; height: number } | null>(null);
+
   useEffect(() => {
-    if (open) inputRef.current?.focus();
     if (!open) return;
+    if (!touch) inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [open, touch]);
+
+  // On phones, pin the panel to the visible area (above the on-screen keyboard) and lock the page behind it.
+  useEffect(() => {
+    if (!open || !window.matchMedia("(max-width: 760px)").matches) return;
+    const html = document.documentElement;
+    const prev = { html: html.style.overflow, body: document.body.style.overflow };
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    const vv = window.visualViewport;
+    const update = () => {
+      // Ignore implausible sizes some browsers report mid-transition.
+      if (vv && vv.height > 150) setViewport({ top: vv.offsetTop, height: vv.height });
+      // Undo any scroll the browser did to reveal the focused input.
+      if (window.scrollY) window.scrollTo(0, 0);
+    };
+    update();
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    return () => {
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      html.style.overflow = prev.html;
+      document.body.style.overflow = prev.body;
+      setViewport(null);
+    };
   }, [open]);
 
   const send = async (text: string) => {
@@ -123,7 +154,7 @@ export function Assistant() {
       setMsgs((m) => [...m, { role: "assistant", content: (e as Error).message, error: true }]);
     } finally {
       setBusy(false);
-      inputRef.current?.focus();
+      if (!touch) inputRef.current?.focus();
     }
   };
 
@@ -136,7 +167,20 @@ export function Assistant() {
         </button>
       )}
       {open && (
-        <section className="ai-panel" role="dialog" aria-label="AI assistant">
+        <section
+          className="ai-panel"
+          role="dialog"
+          aria-label="AI assistant"
+          style={
+            viewport
+              ? {
+                  top: `calc(${viewport.top}px + 8px + env(safe-area-inset-top))`,
+                  height: `calc(${viewport.height}px - 16px - env(safe-area-inset-top))`,
+                  bottom: "auto",
+                }
+              : undefined
+          }
+        >
           <header className="ai-head">
             <div className="ai-title">
               <span className="ai-badge">
