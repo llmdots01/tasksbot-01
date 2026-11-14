@@ -49,6 +49,18 @@ Task(AI)Do is an installable Progressive Web App:
 
 Once installed, it opens full-screen from its own icon, follows the dark/light theme in the status bar, and has a long-press **New task** shortcut. The service worker (`frontend/public/sw.js`) caches the app shell, so it opens offline. Pages use network-first, hashed `/assets/*` files are cache-first, and API calls are never cached. The manifest is `frontend/public/manifest.webmanifest`, and icons are in `frontend/public/icons/`, rendered from `icon.svg`.
 
+## Phone push notifications
+
+Reminders and due alerts are also sent as push notifications to every device where the user turned them on (**Settings → Phone notifications**). They arrive even when the app is closed.
+
+- **Android / desktop Chrome, Edge, Firefox:** works in the browser or the installed app.
+- **iPhone / iPad (iOS 16.4+):** only after adding the app to the Home Screen and opening it from there. That's an Apple requirement, and the Settings card explains it.
+- **Implementation:** Web Push with VAPID (RFC 8292) and `aes128gcm` payload encryption (RFC 8291), written with WebCrypto in `backend/src/webpush.ts` (no Node dependencies).
+  - Subscriptions live in `push_subscriptions` (migration `0003`). Dead ones (404/410) are removed automatically.
+  - Only real browser push services can be targeted: Google, Apple, Mozilla, Microsoft.
+- **Configuration:** `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` vars in `wrangler.jsonc`, plus the `VAPID_PRIVATE_KEY` secret (JWK JSON of the matching P-256 private key). If you rotate the key pair, existing subscriptions stop working, and users re-enable notifications on each device.
+- **Display:** the service worker shows the notification, formatting the due time in the device's own time zone. Tapping it opens Tasks.
+
 ## API
 
 All `/api/*` routes need `Authorization: Bearer <token>`.
@@ -61,8 +73,11 @@ All `/api/*` routes need `Authorization: Bearer <token>`.
 | PUT | `/api/settings` | `{ email_notifications?, slack_notifications?, slack_webhook_url? }` |
 | POST | `/api/slack/ticket` | Returns URL to start "Add to Slack" |
 | DELETE | `/api/slack` | Disconnect Slack |
-| POST | `/api/notifications/test` | `{ channel: "email" \| "slack" }` |
-| GET | `/api/notifications/log?limit=&channel=` | Recent deliveries (up to 200), optionally email or slack only |
+| POST | `/api/notifications/test` | `{ channel: "email" \| "slack" \| "push" }` |
+| GET | `/api/notifications/log?limit=&channel=` | Recent deliveries (up to 200), optionally email, slack or push only |
+| GET | `/api/push/status` | `{ configured, publicKey, devices }` |
+| POST | `/api/push/subscribe` | Browser `PushSubscription` JSON for this device |
+| POST | `/api/push/unsubscribe` | `{ endpoint }` |
 | POST | `/api/assistant/chat` | `{ messages, provider?: "auto"\|"gemini"\|"llama", timezone? }` → `{ reply, actions, provider }` |
 | GET | `/api/tasks?status=&priority=&q=` | List tasks |
 | POST | `/api/tasks` | Create (`title`, `due_date` required) |

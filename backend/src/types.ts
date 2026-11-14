@@ -19,12 +19,16 @@ export interface Env {
   SLACK_CLIENT_ID?: string;
   SLACK_CLIENT_SECRET?: string;
   GEMINI_API_KEY?: string;
+  /** VAPID private key as a JWK JSON string (Web Push). */
+  VAPID_PRIVATE_KEY?: string;
 
   // AI assistant configuration (vars)
   GEMINI_MODEL?: string;
   GEMINI_THINKING?: string;
   LLAMA_MODEL?: string;
   ASSISTANT_DAILY_LIMIT?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_SUBJECT?: string;
 }
 
 export type AppEnv = { Bindings: Env; Variables: { userId: string } };

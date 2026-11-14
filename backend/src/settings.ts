@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { AppEnv, Env, UserRow } from "./types";
 import { publicUser, requireAuth } from "./auth";
-import { isSlackWebhookUrl, sendEmail, sendSlack } from "./notify";
+import { isSlackWebhookUrl, pushMessage, sendEmail, sendSlack } from "./notify";
+import { sendPushToUser } from "./push";
 import { randomToken, signJwt, verifyJwt } from "./crypto";
 
 export async function loadUser(db: D1Database, id: string): Promise<UserRow> {
@@ -63,7 +64,7 @@ export async function disconnectSlack(db: D1Database, userId: string): Promise<U
 
 /** Send a sample notification on one channel and log the result. Throws SettingsError or the send error. */
 export async function sendTestNotification(env: Env, user: UserRow, channel: unknown): Promise<void> {
-  if (channel !== "email" && channel !== "slack") throw new SettingsError("channel must be 'email' or 'slack'");
+  if (channel !== "email" && channel !== "slack" && channel !== "push") throw new SettingsError("channel must be 'email', 'slack' or 'push'");
   if (channel === "slack" && !user.slack_webhook_url) throw new SettingsError("Slack is not connected");
   const sample = {
     title: "Sample task",
@@ -73,8 +74,18 @@ export async function sendTestNotification(env: Env, user: UserRow, channel: unk
   };
   try {
     if (channel === "email") await sendEmail(env, user.email, "test", sample);
-    else await sendSlack(user.slack_webhook_url!, "test", sample, env.FRONTEND_URL);
+    else if (channel === "slack") await sendSlack(user.slack_webhook_url!, "test", sample, env.FRONTEND_URL);
+    else {
+      const r = await sendPushToUser(env, user.id, {
+        ...pushMessage("test", sample),
+        body: "Push notifications are working on this device.",
+        due: undefined,
+      });
+      if (!r) throw new SettingsError("Turn on phone notifications on this device first.");
+      if (!r.sent) throw new Error(r.error ?? "No device accepted the notification");
+    }
   } catch (e) {
+    if (e instanceof SettingsError) throw e;
     await env.DB.prepare("INSERT INTO notification_log (user_id, channel, kind, success, error) VALUES (?, ?, 'test', 0, ?)")
       .bind(user.id, channel, String((e as Error).message))
       .run();
@@ -86,7 +97,7 @@ export async function sendTestNotification(env: Env, user: UserRow, channel: unk
 export async function notificationLog(db: D1Database, userId: string, opts: { limit?: number; channel?: string } = {}) {
   const where = ["l.user_id = ?"];
   const args: unknown[] = [userId];
-  if (opts.channel === "email" || opts.channel === "slack") {
+  if (opts.channel === "email" || opts.channel === "slack" || opts.channel === "push") {
     where.push("l.channel = ?");
     args.push(opts.channel);
   }
@@ -123,6 +134,8 @@ settingsRoutes.delete("/me", async (c) => {
   const db = c.env.DB;
   await db.batch([
     db.prepare("DELETE FROM notification_log WHERE user_id = ?").bind(user.id),
+    db.prepare("DELETE FROM push_subscriptions WHERE user_id = ?").bind(user.id),
+    db.prepare("DELETE FROM assistant_usage WHERE user_id = ?").bind(user.id),
     db.prepare("DELETE FROM tasks WHERE user_id = ?").bind(user.id),
     db.prepare("DELETE FROM oauth_accounts WHERE user_id = ?").bind(user.id),
     db.prepare("DELETE FROM users WHERE id = ?").bind(user.id),

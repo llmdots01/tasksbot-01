@@ -31,6 +31,9 @@
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
     "GEMINI_THINKING": "minimal",
     "LLAMA_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    "ASSISTANT_DAILY_LIMIT": "200"
+    "ASSISTANT_DAILY_LIMIT": "200",
+    // Web Push (phone notifications). The matching private key is the VAPID_PRIVATE_KEY secret.
+    "VAPID_PUBLIC_KEY": "BDN0c5_XyjuvbeVYpzffhwyGKMCM9MlKeVuS5-MfYMwC41mh0g3WYcx6UjadLdBXtKvJWZ38YgpLM_uf4T-sn0E",
+    "VAPID_SUBJECT": "https://aitask.pareops.in"
   }
 }

@@ -13,3 +13,5 @@ SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=
 # Optional: Gemini for the AI assistant (Llama on Workers AI is used if unset)
 GEMINI_API_KEY=
+# Optional: Web Push. JWK JSON of the P-256 private key matching VAPID_PUBLIC_KEY in wrangler.jsonc
+VAPID_PRIVATE_KEY=
