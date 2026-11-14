@@ -1,7 +1,7 @@
 import type { Env } from "../types";
 import { PRIORITIES, STATUSES } from "../types";
 import { createTask, deleteTask, getTask, listTasks, taskStats, updateTask, ValidationError, type TaskInput } from "../tasks";
-import { disconnectSlack, loadUser, notificationLog, sendTestNotification, SettingsError, updateNotificationSettings } from "../settings";
+import { clearNotificationLog, disconnectSlack, loadUser, notificationLog, sendTestNotification, SettingsError, updateNotificationSettings } from "../settings";
 import { publicUser } from "../auth";
 import { pushDeviceCount } from "../push";
 
@@ -113,6 +113,16 @@ export const TOOLS: ToolDef[] = [
     name: "disconnect_slack",
     description: "Disconnect Slack. Ask the user to confirm first and only call with confirmed=true after they agree.",
     parameters: { type: "object", properties: { confirmed: { type: "boolean" } }, required: ["confirmed"] },
+  },
+  {
+    name: "clear_notification_history",
+    description:
+      "Delete the user's notification history (all of it, or one channel). Ask the user to confirm first and only call with confirmed=true after they agree.",
+    parameters: {
+      type: "object",
+      properties: { channel: { type: "string", enum: ["email", "slack", "push"] }, confirmed: { type: "boolean" } },
+      required: ["confirmed"],
+    },
   },
   {
     name: "get_notification_history",
@@ -233,6 +243,11 @@ export async function runTool(
         if (args.confirmed !== true) return { result: { error: "Ask the user to confirm first, then call again with confirmed=true." } };
         await disconnectSlack(db, userId);
         return { result: { disconnected: true }, action: { tool: name, label: "Disconnected Slack" } };
+      }
+      case "clear_notification_history": {
+        if (args.confirmed !== true) return { result: { error: "Ask the user to confirm first, then call again with confirmed=true." } };
+        const n = await clearNotificationLog(db, userId, str(args.channel));
+        return { result: { deleted: n }, action: { tool: name, label: `Cleared ${n} history entr${n === 1 ? "y" : "ies"}` } };
       }
       case "get_notification_history":
         return { result: { deliveries: await notificationLog(db, userId, { channel: str(args.channel), limit: Math.min(num(args.limit) ?? 20, 50) }) } };

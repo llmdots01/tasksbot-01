@@ -37,7 +37,8 @@ It asks before deleting a task or disconnecting Slack, and it can't delete the a
 
 - **Models:** Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`) is tried first. If it errors or is overloaded, the assistant falls back to Llama 3.3 70B on Cloudflare Workers AI (`LLAMA_MODEL`), which is free within the Workers AI daily allowance. Users can pin either model in the chat. The fallback only happens if nothing was changed yet, so actions are never repeated.
 - **Secrets:** `GEMINI_API_KEY`. Without it, only Llama is used. The Workers AI binding `AI` is set in `wrangler.jsonc`.
-- **Limits:** each user gets `ASSISTANT_DAILY_LIMIT` messages per day (default 200), counted in the `assistant_usage` table.
+- **Enhance with AI:** the task form's **Enhance with AI** button calls `/api/assistant/enhance`, which uses the same Gemini → Llama fallback. It rewrites the title and description to be clear and actionable, and suggests category and tags. It never saves anything, and an **Undo** toast restores the previous text.
+- **Limits:** each user gets `ASSISTANT_DAILY_LIMIT` AI requests per day (chat messages and enhancements together) (default 200), counted in the `assistant_usage` table.
 - **Time zones:** the browser sends its time zone, so "tomorrow at 6pm" means the user's local 6pm.
 
 ## Install on your phone (PWA)
@@ -75,6 +76,9 @@ All `/api/*` routes need `Authorization: Bearer <token>`.
 | DELETE | `/api/slack` | Disconnect Slack |
 | POST | `/api/notifications/test` | `{ channel: "email" \| "slack" \| "push" }` |
 | GET | `/api/notifications/log?limit=&channel=` | Recent deliveries (up to 200), optionally email, slack or push only |
+| DELETE | `/api/notifications/log/:id` | Delete one history entry |
+| DELETE | `/api/notifications/log?channel=` | Clear history (all, or email/slack/push only) |
+| POST | `/api/assistant/enhance` | `{ title, description?, due_date?, priority?, category?, tags? }` → improved `{ title, description, category?, tags?, priority? }` (not saved) |
 | GET | `/api/push/status` | `{ configured, publicKey, devices }` |
 | POST | `/api/push/subscribe` | Browser `PushSubscription` JSON for this device |
 | POST | `/api/push/unsubscribe` | `{ endpoint }` |

@@ -12,7 +12,8 @@ import {
   type Task,
   type TaskInput,
 } from "../api";
-import { PlusIcon } from "../icons";
+import { PlusIcon, SparkIcon } from "../icons";
+import { toast } from "../toast";
 import { onDataChanged } from "../events";
 
 type Editing = Task | "new" | null;
@@ -111,12 +112,20 @@ export default function Tasks() {
 
   useEffect(() => onDataChanged(load), [load]);
 
-  const update = async (id: number, body: TaskInput) => {
+  const update = async (t: Task, body: TaskInput) => {
     try {
-      await api(`/api/tasks/${id}`, { method: "PUT", body: JSON.stringify(body) });
+      await api(`/api/tasks/${t.id}`, { method: "PUT", body: JSON.stringify(body) });
       load();
+      if (body.status === "completed") {
+        toast.success("Task completed", {
+          detail: t.title,
+          action: { label: "Undo", onClick: () => update(t, { status: t.status }) },
+        });
+      } else if (body.status && t.status === "completed") {
+        toast.info("Task reopened", { detail: t.title });
+      }
     } catch (e) {
-      setError((e as Error).message);
+      toast.error("Couldn't update the task", { detail: (e as Error).message });
     }
   };
 
@@ -125,8 +134,28 @@ export default function Tasks() {
     try {
       await api(`/api/tasks/${t.id}`, { method: "DELETE" });
       load();
+      // Undo recreates the task with the same details.
+      toast.success("Task deleted", {
+        detail: t.title,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const { title, description, due_date, priority, status, category, tags, is_reminder_set, reminder_time } = t;
+            try {
+              await api("/api/tasks", {
+                method: "POST",
+                body: JSON.stringify({ title, description, due_date, priority, status, category, tags, is_reminder_set, reminder_time }),
+              });
+              load();
+              toast.info("Task restored", { detail: t.title });
+            } catch (e) {
+              toast.error("Couldn't restore the task", { detail: (e as Error).message });
+            }
+          },
+        },
+      });
     } catch (e) {
-      setError((e as Error).message);
+      toast.error("Couldn't delete the task", { detail: (e as Error).message });
     }
   };
 
@@ -192,7 +221,7 @@ export default function Tasks() {
       ) : (
         <ul className="task-list">
           {shown.map((t) => (
-            <TaskRow key={t.id} task={t} onEdit={() => setEditing(t)} onUpdate={(b) => update(t.id, b)} onDelete={() => remove(t)} />
+            <TaskRow key={t.id} task={t} onEdit={() => setEditing(t)} onUpdate={(b) => update(t, b)} onDelete={() => remove(t)} />
           ))}
         </ul>
       )}
@@ -201,9 +230,10 @@ export default function Tasks() {
         <TaskModal
           task={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
-          onSaved={() => {
+          onSaved={(saved, isNew) => {
             setEditing(null);
             load();
+            toast.success(isNew ? "Task created" : "Task updated", { detail: saved.title });
           }}
         />
       )}
@@ -284,7 +314,7 @@ function defaultDue(): string {
   return isoToLocalInput(d.toISOString());
 }
 
-function TaskModal({ task, onClose, onSaved }: { task: Task | null; onClose: () => void; onSaved: () => void }) {
+function TaskModal({ task, onClose, onSaved }: { task: Task | null; onClose: () => void; onSaved: (saved: Task, isNew: boolean) => void }) {
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
   const [due, setDue] = useState(task ? isoToLocalInput(task.due_date) : defaultDue());
@@ -300,6 +330,43 @@ function TaskModal({ task, onClose, onSaved }: { task: Task | null; onClose: () 
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enhancing, setEnhancing] = useState(false);
+
+  /** Ask the AI for a clearer title/description; fill category/tags/priority only where they're empty or default. */
+  const enhance = async () => {
+    if (!title.trim()) return setError("Add a title first, then enhance.");
+    setEnhancing(true);
+    setError(null);
+    const before = { title, description, category, tags, priority };
+    try {
+      const r = await api<{ title?: string; description?: string; category?: string; tags?: string; priority?: Priority }>("/api/assistant/enhance", {
+        method: "POST",
+        body: JSON.stringify({ title, description, due_date: localInputToIso(due), priority, category, tags }),
+      });
+      if (r.title) setTitle(r.title);
+      if (r.description) setDescription(r.description);
+      if (r.category && !category.trim()) setCategory(r.category);
+      if (r.tags && !tags.trim()) setTags(r.tags);
+      if (r.priority && !task && priority === "Medium") setPriority(r.priority);
+      toast.success("Enhanced with AI", {
+        detail: "Review the changes, then save.",
+        action: {
+          label: "Undo",
+          onClick: () => {
+            setTitle(before.title);
+            setDescription(before.description);
+            setCategory(before.category);
+            setTags(before.tags);
+            setPriority(before.priority);
+          },
+        },
+      });
+    } catch (e) {
+      toast.error("Couldn't enhance the task", { detail: (e as Error).message });
+    } finally {
+      setEnhancing(false);
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -331,8 +398,8 @@ function TaskModal({ task, onClose, onSaved }: { task: Task | null; onClose: () 
     };
     setSaving(true);
     try {
-      await api(task ? `/api/tasks/${task.id}` : "/api/tasks", { method: task ? "PUT" : "POST", body: JSON.stringify(body) });
-      onSaved();
+      const saved = await api<Task>(task ? `/api/tasks/${task.id}` : "/api/tasks", { method: task ? "PUT" : "POST", body: JSON.stringify(body) });
+      onSaved(saved, !task);
     } catch (err) {
       setError((err as Error).message);
       setSaving(false);
@@ -349,10 +416,24 @@ function TaskModal({ task, onClose, onSaved }: { task: Task | null; onClose: () 
           Title*
           <input autoFocus value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="What needs doing?" />
         </label>
-        <label>
-          Description
-          <textarea value={description} rows={3} maxLength={2000} onChange={(e) => setDescription(e.target.value)} />
-        </label>
+        <div className="field">
+          <div className="field-head">
+            <label htmlFor="task-description">Description</label>
+            <button type="button" className="btn ai-enhance sm" onClick={enhance} disabled={enhancing || !title.trim()} title="Rewrite the title and description to be clear and actionable">
+              <SparkIcon width={14} height={14} />
+              {enhancing ? "Enhancing…" : "Enhance with AI"}
+            </button>
+          </div>
+          <textarea
+            id="task-description"
+            value={description}
+            rows={description.split("\n").length > 3 ? 6 : 3}
+            maxLength={2000}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Add details, or write a rough note and let AI tidy it up"
+            className={enhancing ? "shimmer" : ""}
+          />
+        </div>
 
         <div className="row">
           <label>

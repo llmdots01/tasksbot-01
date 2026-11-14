@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, formatDate, relativeTime, type LogEntry } from "../api";
-import { BellIcon, MailIcon, SlackLogo } from "../icons";
+import { BellIcon, MailIcon, SlackLogo, TrashIcon } from "../icons";
+import { toast } from "../toast";
 import { onDataChanged } from "../events";
 
 type Filter = "all" | "email" | "slack" | "push";
@@ -26,6 +27,28 @@ export default function History() {
   }, [load]);
   useEffect(() => onDataChanged(load), [load]);
 
+  const removeEntry = async (entry: LogEntry) => {
+    try {
+      await api(`/api/notifications/log/${entry.id}`, { method: "DELETE" });
+      setLog((l) => l?.filter((x) => x.id !== entry.id) ?? null);
+      toast.success("Entry deleted");
+    } catch (e) {
+      toast.error("Couldn't delete the entry", { detail: (e as Error).message });
+    }
+  };
+
+  const clearAll = async () => {
+    const scope = filter === "all" ? "all notification history" : `all ${FILTER_LABEL[filter]} history`;
+    if (!confirm(`Delete ${scope}? This can't be undone.`)) return;
+    try {
+      const { deleted } = await api<{ deleted: number }>(`/api/notifications/log${filter === "all" ? "" : `?channel=${filter}`}`, { method: "DELETE" });
+      setLog([]);
+      toast.success(deleted ? `Deleted ${deleted} entr${deleted === 1 ? "y" : "ies"}` : "Nothing to delete");
+    } catch (e) {
+      toast.error("Couldn't clear history", { detail: (e as Error).message });
+    }
+  };
+
   const sent = log?.filter((l) => l.success).length ?? 0;
   const failed = (log?.length ?? 0) - sent;
 
@@ -36,9 +59,14 @@ export default function History() {
           <h1>History</h1>
           <p className="muted">Every reminder, due alert and test notification sent to you.</p>
         </div>
-        <button className="btn outline sm" onClick={load}>
-          Refresh
-        </button>
+        <div className="btn-row">
+          <button className="btn outline sm" onClick={load}>
+            Refresh
+          </button>
+          <button className="btn outline sm danger-text" onClick={clearAll} disabled={!log?.length}>
+            <TrashIcon width={14} height={14} /> {filter === "all" ? "Clear all" : `Clear ${FILTER_LABEL[filter]}`}
+          </button>
+        </div>
       </div>
 
       <div className="history-bar">
@@ -75,6 +103,7 @@ export default function History() {
                 <th>Type</th>
                 <th>Task</th>
                 <th>Result</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -94,6 +123,11 @@ export default function History() {
                   <td>{l.task_title ?? (l.kind === "test" ? "—" : <span className="muted">(deleted)</span>)}</td>
                   <td className={l.success ? "ok-text" : "danger-text"} title={l.error ?? ""}>
                     {l.success ? "Sent" : `Failed${l.error ? `: ${l.error.slice(0, 80)}` : ""}`}
+                  </td>
+                  <td className="log-actions">
+                    <button className="icon-btn sm-icon" aria-label="Delete this entry" title="Delete" onClick={() => removeEntry(l)}>
+                      <TrashIcon width={15} height={15} />
+                    </button>
                   </td>
                 </tr>
               ))}
