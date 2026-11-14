@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { AppEnv, Env, UserRow } from "./types";
 import { publicUser, requireAuth } from "./auth";
-import { isSlackWebhookUrl, pushMessage, sendEmail, sendSlack } from "./notify";
+import { isSlackMention, isSlackWebhookUrl, pushMessage, sendEmail, sendSlack } from "./notify";
 import { sendPushToUser } from "./push";
 import { randomToken, signJwt, verifyJwt } from "./crypto";
 
@@ -17,7 +17,7 @@ export class SettingsError extends Error {}
 export async function updateNotificationSettings(
   db: D1Database,
   userId: string,
-  body: { email_notifications?: unknown; slack_notifications?: unknown; slack_webhook_url?: unknown },
+  body: { email_notifications?: unknown; slack_notifications?: unknown; slack_webhook_url?: unknown; slack_mention?: unknown },
 ): Promise<UserRow> {
   const sets: string[] = [];
   const args: unknown[] = [];
@@ -40,6 +40,17 @@ export async function updateNotificationSettings(
       throw new SettingsError("Slack webhook URL must look like https://hooks.slack.com/services/...");
     }
   }
+  if ("slack_mention" in body) {
+    const m = typeof body.slack_mention === "string" ? body.slack_mention.trim() : body.slack_mention;
+    if (m === null || m === "" || m === "none") {
+      sets.push("slack_mention = NULL");
+    } else if (typeof m === "string" && isSlackMention(m.toUpperCase() === "CHANNEL" ? "channel" : m.toUpperCase())) {
+      sets.push("slack_mention = ?");
+      args.push(m.toUpperCase() === "CHANNEL" ? "channel" : m.toUpperCase());
+    } else {
+      throw new SettingsError("Slack member ID should look like U01ABC2DEF (Slack profile → ⋮ → Copy member ID).");
+    }
+  }
   if (sets.length) {
     sets.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
     await db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).bind(...args, userId).run();
@@ -55,7 +66,7 @@ export async function updateNotificationSettings(
 export async function disconnectSlack(db: D1Database, userId: string): Promise<UserRow> {
   await db
     .prepare(
-      "UPDATE users SET slack_webhook_url = NULL, slack_channel = NULL, slack_notifications = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?",
+      "UPDATE users SET slack_webhook_url = NULL, slack_channel = NULL, slack_mention = NULL, slack_notifications = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?",
     )
     .bind(userId)
     .run();
@@ -74,7 +85,7 @@ export async function sendTestNotification(env: Env, user: UserRow, channel: unk
   };
   try {
     if (channel === "email") await sendEmail(env, user.email, "test", sample);
-    else if (channel === "slack") await sendSlack(user.slack_webhook_url!, "test", sample, env.FRONTEND_URL);
+    else if (channel === "slack") await sendSlack(user.slack_webhook_url!, "test", sample, env.FRONTEND_URL, user.slack_mention);
     else {
       const r = await sendPushToUser(env, user.id, {
         ...pushMessage("test", sample),
@@ -231,15 +242,17 @@ slackRoutes.get("/callback", async (c) => {
     ok: boolean;
     error?: string;
     incoming_webhook?: { url: string; channel: string };
+    authed_user?: { id?: string };
     team?: { name: string };
   };
   if (!data.ok || !data.incoming_webhook?.url) return back({ slack: "error", message: `Slack error: ${data.error ?? "no webhook returned"}` });
 
   const channel = [data.team?.name, data.incoming_webhook.channel].filter(Boolean).join(" · ");
   await c.env.DB.prepare(
-    "UPDATE users SET slack_webhook_url = ?, slack_channel = ?, slack_notifications = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?",
+    // Mention the person who installed it, so Slack pushes reminders to their phone.
+    "UPDATE users SET slack_webhook_url = ?, slack_channel = ?, slack_mention = COALESCE(?, slack_mention), slack_notifications = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?",
   )
-    .bind(data.incoming_webhook.url, channel, st.sub)
+    .bind(data.incoming_webhook.url, channel, data.authed_user?.id && isSlackMention(data.authed_user.id) ? data.authed_user.id : null, st.sub)
     .run();
   return back({ slack: "connected" });
 });

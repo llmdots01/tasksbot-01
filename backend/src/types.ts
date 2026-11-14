@@ -42,6 +42,7 @@ export interface UserRow {
   slack_notifications: number;
   slack_webhook_url: string | null;
   slack_channel: string | null;
+  slack_mention: string | null;
   created_at: string;
   updated_at: string;
 }
