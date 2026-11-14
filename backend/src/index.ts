@@ -5,6 +5,7 @@ import { authRoutes, requireAuth } from "./auth";
 import { taskRoutes } from "./tasks";
 import { settingsRoutes, slackRoutes } from "./settings";
 import { processDueNotifications } from "./notify";
+import { assistantRoutes } from "./assistant";
 
 const app = new Hono<AppEnv>();
 
@@ -37,6 +38,7 @@ app.route("/integrations/slack", slackRoutes);
 app.use("/api/tasks/*", requireAuth);
 app.use("/api/tasks", requireAuth);
 app.route("/api/tasks", taskRoutes);
+app.route("/api/assistant", assistantRoutes);
 app.route("/api", settingsRoutes);
 
 app.notFound((c) => c.json({ error: "Not found" }, 404));

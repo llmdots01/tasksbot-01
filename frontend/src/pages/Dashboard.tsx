@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, formatDate, relativeTime, type Stats, type Task, type User } from "../api";
 import { navigate } from "../router";
 import { MailIcon, PlusIcon, SlackLogo } from "../icons";
+import { onDataChanged } from "../events";
 
 export default function Dashboard({ user }: { user: User }) {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -9,12 +10,15 @@ export default function Dashboard({ user }: { user: User }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([api<Stats>("/api/tasks/statistics"), api<Task[]>("/api/tasks?limit=200")])
-      .then(([s, tasks]) => {
-        setStats(s);
-        setUpcoming(tasks.filter((t) => t.status !== "completed" && t.due_date).slice(0, 6));
-      })
-      .catch((e) => setError(e.message));
+    const load = () =>
+      Promise.all([api<Stats>("/api/tasks/statistics"), api<Task[]>("/api/tasks?limit=200")])
+        .then(([s, tasks]) => {
+          setStats(s);
+          setUpcoming(tasks.filter((t) => t.status !== "completed" && t.due_date).slice(0, 6));
+        })
+        .catch((e) => setError(e.message));
+    load();
+    return onDataChanged(load);
   }, []);
 
   const slackOn = user.slack_notifications && user.slack_connected;

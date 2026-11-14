@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { User } from "./api";
 import { navigate } from "./router";
-import { ChevronDownIcon, GearIcon, GridIcon, ListIcon, LogOutIcon, UserIcon } from "./icons";
+import { ChevronDownIcon, ClockIcon, GearIcon, GridIcon, ListIcon, LogOutIcon, UserIcon } from "./icons";
 
 const ITEMS: { path: string; label: string; icon: ReactNode }[] = [
   { path: "/", label: "Dashboard", icon: <GridIcon /> },
   { path: "/tasks", label: "Tasks", icon: <ListIcon /> },
+  { path: "/history", label: "History", icon: <ClockIcon /> },
   { path: "/settings", label: "Settings", icon: <GearIcon /> },
 ];
 

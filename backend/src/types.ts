@@ -1,5 +1,7 @@
 export interface Env {
   DB: D1Database;
+  /** Workers AI (Llama). */
+  AI: Ai;
 
   FRONTEND_URL: string;
   /** Comma-separated extra origins allowed to call the API (CORS). */
@@ -16,6 +18,13 @@ export interface Env {
   RESEND_API_KEY?: string;
   SLACK_CLIENT_ID?: string;
   SLACK_CLIENT_SECRET?: string;
+  GEMINI_API_KEY?: string;
+
+  // AI assistant configuration (vars)
+  GEMINI_MODEL?: string;
+  GEMINI_THINKING?: string;
+  LLAMA_MODEL?: string;
+  ASSISTANT_DAILY_LIMIT?: string;
 }
 
 export type AppEnv = { Bindings: Env; Variables: { userId: string } };

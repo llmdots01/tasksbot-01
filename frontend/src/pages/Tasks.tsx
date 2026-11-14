@@ -13,6 +13,7 @@ import {
   type TaskInput,
 } from "../api";
 import { PlusIcon } from "../icons";
+import { onDataChanged } from "../events";
 
 type Editing = Task | "new" | null;
 
@@ -44,6 +45,8 @@ export default function Tasks() {
     const t = setTimeout(load, q ? 250 : 0);
     return () => clearTimeout(t);
   }, [load, q]);
+
+  useEffect(() => onDataChanged(load), [load]);
 
   const update = async (id: number, body: TaskInput) => {
     try {
