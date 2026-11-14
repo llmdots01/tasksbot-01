@@ -10,7 +10,8 @@ import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
 import History from "./pages/History";
 import { Assistant } from "./Assistant";
-import { onDataChanged } from "./events";
+import { emitDataChanged, onDataChanged } from "./events";
+import { toast } from "./toast";
 import { Footer, PrivacyPage, TermsPage } from "./pages/Legal";
 
 const PUBLIC_PATHS = ["/privacy", "/terms"];
@@ -49,6 +50,23 @@ export default function App() {
     });
     loadMe();
   }, [loadMe]);
+
+  // A push that arrives while the app is open is also shown as an in-app toast.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data as { type?: string; title?: string; body?: string; url?: string } | null;
+      if (d?.type !== "push") return;
+      toast.info(d.title || "Task(AI)Do", {
+        detail: d.body || undefined,
+        duration: 8000,
+        action: d.url ? { label: "View", onClick: () => navigate(d.url!) } : undefined,
+      });
+      emitDataChanged();
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, []);
 
   // Refresh the user (notification settings) when the assistant changes something.
   useEffect(() => onDataChanged(() => api<User>("/api/me").then(setUser).catch(() => {})), []);

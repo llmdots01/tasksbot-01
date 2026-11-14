@@ -3,6 +3,7 @@ import { api, type Providers, type User } from "../api";
 import { AlertIcon, BellIcon, MailIcon, SlackLogo, TrashIcon } from "../icons";
 import { devicePushState, disablePush, enablePush, type PushState, type PushStatus } from "../push";
 import { InstallInstructions } from "../install";
+import { toast } from "../toast";
 import { navigate } from "../router";
 
 export default function Settings({
@@ -15,12 +16,12 @@ export default function Settings({
   onAccountDeleted: () => void;
 }) {
   const [providers, setProviders] = useState<Providers | null>(null);
-  const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(() => {
+  // Result of the "Add to Slack" redirect, shown once as a toast.
+  useEffect(() => {
     const p = new URLSearchParams(location.search);
-    if (p.get("slack") === "connected") return { kind: "ok", text: "Slack connected. Reminders will now be posted there." };
-    if (p.get("slack") === "error") return { kind: "error", text: p.get("message") ?? "Slack connection failed." };
-    return null;
-  });
+    if (p.get("slack") === "connected") toast.success("Slack connected", { detail: "Reminders will now be posted there." });
+    if (p.get("slack") === "error") toast.error("Slack connection failed", { detail: p.get("message") ?? undefined });
+  }, []);
   const [webhook, setWebhook] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -41,11 +42,10 @@ export default function Settings({
 
   const run = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
-    setMsg(null);
     try {
       await fn();
     } catch (e) {
-      setMsg({ kind: "error", text: (e as Error).message });
+      toast.error((e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -53,13 +53,18 @@ export default function Settings({
 
   const save = (body: Record<string, unknown>, key: string) =>
     run(key, async () => {
-      onUserChange(await api<User>("/api/settings", { method: "PUT", body: JSON.stringify(body) }));
+      const u = await api<User>("/api/settings", { method: "PUT", body: JSON.stringify(body) });
+      onUserChange(u);
+      if ("email_notifications" in body) toast.success(`Email notifications ${u.email_notifications ? "on" : "off"}`);
+      else if ("slack_notifications" in body) toast.success(`Slack notifications ${u.slack_notifications ? "on" : "off"}`);
+      else if ("slack_webhook_url" in body) toast.success("Slack connected");
+      else if ("slack_mention" in body) toast.success("Slack phone alerts saved");
     });
 
   const test = (channel: "email" | "slack") =>
     run(`test-${channel}`, async () => {
       await api("/api/notifications/test", { method: "POST", body: JSON.stringify({ channel }) });
-      setMsg({ kind: "ok", text: `Test ${channel} sent${channel === "email" ? ` to ${user.email}` : ""}.` });
+      toast.success(`Test ${channel === "email" ? "email" : "Slack message"} sent`, { detail: channel === "email" ? `Check ${user.email}` : undefined });
     });
 
   const addToSlack = () =>
@@ -71,6 +76,7 @@ export default function Settings({
   const disconnect = () =>
     run("disconnect", async () => {
       onUserChange(await api<User>("/api/slack", { method: "DELETE" }));
+      toast.info("Slack disconnected");
     });
 
   return (
@@ -81,7 +87,6 @@ export default function Settings({
           <p className="muted">Choose where your reminders are delivered.</p>
         </div>
       </div>
-      {msg && <div className={`alert ${msg.kind === "ok" ? "success" : "error"}`}>{msg.text}</div>}
 
       <section className="card" id="email">
         <div className="setting">
@@ -323,7 +328,6 @@ function PhoneNotifications() {
   const [status, setStatus] = useState<PushStatus | null>(null);
   const [state, setState] = useState<PushState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [installHelp, setInstallHelp] = useState(false);
 
   const refresh = async () => {
@@ -337,12 +341,11 @@ function PhoneNotifications() {
 
   const act = async (key: string, fn: () => Promise<void>, ok?: string) => {
     setBusy(key);
-    setMsg(null);
     try {
       await fn();
-      if (ok) setMsg({ kind: "ok", text: ok });
+      if (ok) toast.success(ok);
     } catch (e) {
-      setMsg({ kind: "error", text: (e as Error).message });
+      toast.error((e as Error).message);
     } finally {
       setBusy(null);
       refresh();
@@ -372,12 +375,11 @@ function PhoneNotifications() {
             disabled={busy !== null}
             label="Phone notifications on this device"
             onChange={(v) =>
-              act(v ? "enable" : "disable", () => (v ? enablePush(status.publicKey!) : disablePush()), v ? "Notifications are on for this device." : undefined)
+              act(v ? "enable" : "disable", () => (v ? enablePush(status.publicKey!) : disablePush()), v ? "Notifications are on for this device." : "Notifications are off for this device.")
             }
           />
         )}
       </div>
-      {msg && <div className={`alert ${msg.kind === "ok" ? "success" : "error"}`}>{msg.text}</div>}
       <div className="btn-row push-row">
         {state === "ios-install" && (
           <button className="btn primary sm" onClick={() => setInstallHelp(true)}>
@@ -387,7 +389,7 @@ function PhoneNotifications() {
         {(on || others > 0) && (
           <button className="btn outline sm" disabled={busy === "test"} onClick={() => act("test", async () => {
             await api("/api/notifications/test", { method: "POST", body: JSON.stringify({ channel: "push" }) });
-          }, "Test notification sent. It should appear in a few seconds.")}>
+          }, "Test notification sent — it should appear in a few seconds.")}>
             {busy === "test" ? "Sending…" : "Send test notification"}
           </button>
         )}

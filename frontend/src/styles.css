@@ -513,3 +513,58 @@ a.chip-link:hover { border-color: var(--accent); filter: brightness(1.1); }
 .slack-mention { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
 .slack-mention p { margin: 0; }
 .slack-mention .btn { align-self: flex-start; }
+
+/* ---------- Toasts ---------- */
+.toaster {
+  position: fixed; z-index: 60; right: 24px; bottom: calc(88px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none;
+}
+.toast {
+  pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 12px 14px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-left: 4px solid var(--accent);
+  border-radius: 12px; box-shadow: var(--shadow); animation: toast-in 0.22s ease-out;
+}
+.toast.error { border-left-color: var(--danger); }
+.toast.info { border-left-color: var(--accent-2); }
+.toast.leaving { animation: toast-out 0.18s ease-in forwards; }
+.toast-icon {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 0.8rem; font-weight: 800;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+}
+.toast.error .toast-icon { background: var(--danger-bg); color: var(--danger); }
+.toast.info .toast-icon { background: transparent; font-size: 1rem; }
+.toast-body { flex: 1; min-width: 0; padding-top: 2px; }
+.toast-msg { font-weight: 600; font-size: 0.92rem; overflow-wrap: anywhere; }
+.toast-detail { color: var(--muted); font-size: 0.82rem; margin-top: 2px; white-space: pre-line; overflow-wrap: anywhere; }
+.toast-action {
+  border: 0; background: transparent; color: var(--accent); font-weight: 700; cursor: pointer; padding: 3px 6px; border-radius: 6px; font-size: 0.88rem;
+}
+.toast-action:hover { background: var(--surface-2); }
+.toast-close { border: 0; background: transparent; color: var(--subtle); font-size: 1.2rem; line-height: 1; cursor: pointer; padding: 0 2px; }
+.toast-close:hover { color: var(--text); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(6px); } }
+@media (max-width: 760px) {
+  /* Phones: centred along the top, clear of the notch, so it never covers the input or the Ask AI button. */
+  .toaster { left: 50%; right: auto; transform: translateX(-50%); top: calc(10px + env(safe-area-inset-top)); bottom: auto; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-10px) scale(0.98); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-reduced-motion: reduce) { .toast, .toast.leaving { animation: none; } }
+
+/* ---------- Enhance with AI ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.field-head label { font-size: 0.85rem; font-weight: 500; color: var(--muted); }
+.btn.ai-enhance {
+  border: 0; color: var(--accent-ink); background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  padding: 5px 11px; font-size: 0.8rem;
+}
+.btn.ai-enhance:hover { filter: brightness(1.08); }
+textarea.shimmer {
+  background: linear-gradient(90deg, var(--surface-2) 25%, color-mix(in srgb, var(--accent) 12%, var(--surface-2)) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%; animation: shimmer 1.2s linear infinite;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+.icon-btn.sm-icon { width: 30px; height: 30px; border-radius: 8px; color: var(--muted); }
+.icon-btn.sm-icon:hover { color: var(--danger); border-color: var(--danger); }
+.log-actions { width: 40px; text-align: right; }

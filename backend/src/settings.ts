@@ -105,6 +105,22 @@ export async function sendTestNotification(env: Env, user: UserRow, channel: unk
   await env.DB.prepare("INSERT INTO notification_log (user_id, channel, kind, success) VALUES (?, ?, 'test', 1)").bind(user.id, channel).run();
 }
 
+/** Delete one history entry. Returns false if it doesn't exist for this user. */
+export async function deleteNotificationLogEntry(db: D1Database, userId: string, id: number): Promise<boolean> {
+  const res = await db.prepare("DELETE FROM notification_log WHERE id = ? AND user_id = ?").bind(id, userId).run();
+  return Boolean(res.meta.changes);
+}
+
+/** Clear the user's history, optionally for one channel only. Returns how many entries were removed. */
+export async function clearNotificationLog(db: D1Database, userId: string, channel?: string): Promise<number> {
+  const byChannel = channel === "email" || channel === "slack" || channel === "push";
+  const res = await db
+    .prepare(`DELETE FROM notification_log WHERE user_id = ?${byChannel ? " AND channel = ?" : ""}`)
+    .bind(...(byChannel ? [userId, channel] : [userId]))
+    .run();
+  return res.meta.changes ?? 0;
+}
+
 export async function notificationLog(db: D1Database, userId: string, opts: { limit?: number; channel?: string } = {}) {
   const where = ["l.user_id = ?"];
   const args: unknown[] = [userId];
@@ -191,6 +207,14 @@ settingsRoutes.post("/notifications/test", async (c) => {
 settingsRoutes.get("/notifications/log", async (c) =>
   c.json(await notificationLog(c.env.DB, c.var.userId, { limit: Number(c.req.query("limit")) || 50, channel: c.req.query("channel") })),
 );
+
+settingsRoutes.delete("/notifications/log/:id{[0-9]+}", async (c) => {
+  const ok = await deleteNotificationLogEntry(c.env.DB, c.var.userId, Number(c.req.param("id")));
+  return ok ? c.json({ deleted: 1 }) : c.json({ error: "Entry not found" }, 404);
+});
+
+/** Clear history: all of it, or ?channel=email|slack|push. */
+settingsRoutes.delete("/notifications/log", async (c) => c.json({ deleted: await clearNotificationLog(c.env.DB, c.var.userId, c.req.query("channel")) }));
 
 // ---------- /integrations/slack (browser redirects) ----------
 

@@ -3,7 +3,7 @@
  * - /assets/* (content-hashed by Vite): cache first, since they never change.
  * - API calls (a different origin) are never cached.
  * Also shows push notifications for reminders and due alerts. */
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL = `taskaido-shell-${VERSION}`;
 const ASSETS = `taskaido-assets-${VERSION}`;
 const PRECACHE = ["/", "/manifest.webmanifest", "/favicon.svg", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/badge-96.png"];
@@ -104,7 +104,11 @@ self.addEventListener("push", (event) => {
   }
   const meta = [data.due && `Due ${formatDue(data.due)}`, data.priority && `${data.priority} priority`].filter(Boolean).join(" · ");
   const body = [meta, data.body].filter(Boolean).join("\n");
-  event.waitUntil(
+  // Also tell any open app window, which shows an in-app toast.
+  const notifyWindows = self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((windows) => windows.forEach((w) => w.postMessage({ type: "push", title: data.title || "Task(AI)Do", body, url: data.url || "/tasks" })));
+  event.waitUntil(Promise.all([notifyWindows,
     self.registration.showNotification(data.title || "Task(AI)Do", {
       body,
       icon: "/icons/icon-192.png",
@@ -115,7 +119,7 @@ self.addEventListener("push", (event) => {
       vibrate: [120, 60, 120],
       data: { url: data.url || "/tasks" },
     }),
-  );
+  ]));
 });
 
 self.addEventListener("notificationclick", (event) => {
