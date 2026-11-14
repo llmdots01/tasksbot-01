@@ -40,6 +40,15 @@ It asks before deleting a task or disconnecting Slack, and it can't delete the a
 - **Limits:** each user gets `ASSISTANT_DAILY_LIMIT` messages per day (default 200), counted in the `assistant_usage` table.
 - **Time zones:** the browser sends its time zone, so "tomorrow at 6pm" means the user's local 6pm.
 
+## Install on your phone (PWA)
+
+Task(AI)Do is an installable Progressive Web App:
+- **Android (Chrome, Edge, Samsung Internet):** tap **Get the app** on the landing page or **Install app** in the profile menu to get the native install prompt.
+- **iPhone / iPad (Safari):** the same button shows how to use **Share → Add to Home Screen**.
+- **Desktop Chrome/Edge:** use the install icon in the address bar.
+
+Once installed, it opens full-screen from its own icon, follows the dark/light theme in the status bar, and has a long-press **New task** shortcut. The service worker (`frontend/public/sw.js`) caches the app shell, so it opens offline. Pages use network-first, hashed `/assets/*` files are cache-first, and API calls are never cached. The manifest is `frontend/public/manifest.webmanifest`, and icons are in `frontend/public/icons/`, rendered from `icon.svg`.
+
 ## API
 
 All `/api/*` routes need `Authorization: Bearer <token>`.

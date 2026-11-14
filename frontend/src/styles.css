@@ -447,3 +447,36 @@ label { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; fon
   .ai-fab { right: 16px; bottom: 16px; }
   .ai-panel { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); }
 }
+
+/* ---------- Installable app (PWA) ---------- */
+.install-btn.compact .install-label { display: inline; }
+@media (max-width: 760px) {
+  .install-btn.compact { padding: 0; width: 38px; height: 38px; border-radius: 10px; }
+  .install-btn.compact .install-label { display: none; }
+}
+.install-sheet { max-width: 400px; text-align: center; align-items: center; position: relative; padding: 28px; }
+.install-sheet h2 { font-size: 1.35rem; display: flex; gap: 6px; align-items: baseline; justify-content: center; flex-wrap: wrap; margin: 0; }
+.install-sheet h2 .wordmark { font-size: 1.35rem; }
+.install-sheet > p { margin: 0; }
+.install-icon { border-radius: 16px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); }
+.install-steps { list-style: none; margin: 4px 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.install-steps li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.step-icon {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-weight: 800;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent);
+}
+.install-sheet .btn.primary { width: 100%; margin-top: 4px; }
+
+/* Respect the notch / home indicator when running full-screen on a phone. */
+.topbar { padding-top: calc(12px + env(safe-area-inset-top)); }
+.site-footer { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+.ai-fab { bottom: calc(24px + env(safe-area-inset-bottom)); }
+.ai-panel { bottom: calc(24px + env(safe-area-inset-bottom)); }
+@media (max-width: 760px) {
+  .ai-fab { bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .ai-panel { top: calc(8px + env(safe-area-inset-top)); bottom: calc(8px + env(safe-area-inset-bottom)); height: auto; }
+}
+@media (display-mode: standalone) {
+  /* No browser chrome around the installed app, so avoid accidental text selection on taps. */
+  .topbar, .profile-btn, .btn, .menu-item { -webkit-user-select: none; user-select: none; }
+}
