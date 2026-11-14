@@ -26,6 +26,20 @@ Browser (Pages SPA) ──Bearer JWT──▶ Worker API ──▶ D1 (users, ta
 - **Slack**: users connect either with one-click **Add to Slack** (OAuth with the `incoming-webhook` scope, which lets them pick a channel or DM) or by pasting an incoming webhook URL. Only `https://hooks.slack.com/services/…` URLs are accepted.
 - **Settings page**: email and Slack toggles, test-send buttons, and a log of recent deliveries with error messages.
 
+## AI assistant
+
+Signed-in users get an **Ask AI** button (bottom right) that opens a chat. The assistant acts as that user through the same code paths as the app. It can:
+- list, create, update, complete and delete tasks;
+- turn email and Slack notifications on or off, or connect Slack with a webhook URL;
+- send test notifications and read the delivery history.
+
+It asks before deleting a task or disconnecting Slack, and it can't delete the account.
+
+- **Models:** Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`) is tried first. If it errors or is overloaded, the assistant falls back to Llama 3.3 70B on Cloudflare Workers AI (`LLAMA_MODEL`), which is free within the Workers AI daily allowance. Users can pin either model in the chat. The fallback only happens if nothing was changed yet, so actions are never repeated.
+- **Secrets:** `GEMINI_API_KEY`. Without it, only Llama is used. The Workers AI binding `AI` is set in `wrangler.jsonc`.
+- **Limits:** each user gets `ASSISTANT_DAILY_LIMIT` messages per day (default 200), counted in the `assistant_usage` table.
+- **Time zones:** the browser sends its time zone, so "tomorrow at 6pm" means the user's local 6pm.
+
 ## API
 
 All `/api/*` routes need `Authorization: Bearer <token>`.
@@ -39,7 +53,8 @@ All `/api/*` routes need `Authorization: Bearer <token>`.
 | POST | `/api/slack/ticket` | Returns URL to start "Add to Slack" |
 | DELETE | `/api/slack` | Disconnect Slack |
 | POST | `/api/notifications/test` | `{ channel: "email" \| "slack" }` |
-| GET | `/api/notifications/log` | Last 50 deliveries |
+| GET | `/api/notifications/log?limit=&channel=` | Recent deliveries (up to 200), optionally email or slack only |
+| POST | `/api/assistant/chat` | `{ messages, provider?: "auto"\|"gemini"\|"llama", timezone? }` → `{ reply, actions, provider }` |
 | GET | `/api/tasks?status=&priority=&q=` | List tasks |
 | POST | `/api/tasks` | Create (`title`, `due_date` required) |
 | GET/PUT/DELETE | `/api/tasks/:id` | Read / update / delete |

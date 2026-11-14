@@ -8,6 +8,9 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
+import History from "./pages/History";
+import { Assistant } from "./Assistant";
+import { onDataChanged } from "./events";
 import { Footer, PrivacyPage, TermsPage } from "./pages/Legal";
 
 const PUBLIC_PATHS = ["/privacy", "/terms"];
@@ -47,6 +50,9 @@ export default function App() {
     loadMe();
   }, [loadMe]);
 
+  // Refresh the user (notification settings) when the assistant changes something.
+  useEffect(() => onDataChanged(() => api<User>("/api/me").then(setUser).catch(() => {})), []);
+
   useEffect(() => {
     if (loading || PUBLIC_PATHS.includes(path)) return;
     if (!user && path !== "/login") navigate("/login", true);
@@ -84,6 +90,8 @@ export default function App() {
       <main className="content">
         {path === "/tasks" ? (
           <Tasks />
+        ) : path === "/history" ? (
+          <History />
         ) : path === "/settings" ? (
           <Settings user={user} onUserChange={setUser} onAccountDeleted={logout} />
         ) : (
@@ -91,6 +99,7 @@ export default function App() {
         )}
       </main>
       <Footer />
+      <Assistant />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { api, formatDate, type LogEntry, type Providers, type User } from "../api";
+import { api, type Providers, type User } from "../api";
 import { AlertIcon, MailIcon, SlackLogo, TrashIcon } from "../icons";
+import { navigate } from "../router";
 
 export default function Settings({
   user,
@@ -12,7 +13,6 @@ export default function Settings({
   onAccountDeleted: () => void;
 }) {
   const [providers, setProviders] = useState<Providers | null>(null);
-  const [log, setLog] = useState<LogEntry[]>([]);
   const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(() => {
     const p = new URLSearchParams(location.search);
     if (p.get("slack") === "connected") return { kind: "ok", text: "Slack connected. Reminders will now be posted there." };
@@ -22,12 +22,9 @@ export default function Settings({
   const [webhook, setWebhook] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
-  const loadLog = () => api<LogEntry[]>("/api/notifications/log").then(setLog).catch(() => {});
-
   useEffect(() => {
     if (location.search) history.replaceState(null, "", "/settings");
     api<Providers>("/auth/providers").then(setProviders).catch(() => {});
-    loadLog();
     // Refresh user after a Slack redirect.
     api<User>("/api/me").then(onUserChange).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,7 +51,7 @@ export default function Settings({
     run(`test-${channel}`, async () => {
       await api("/api/notifications/test", { method: "POST", body: JSON.stringify({ channel }) });
       setMsg({ kind: "ok", text: `Test ${channel} sent${channel === "email" ? ` to ${user.email}` : ""}.` });
-    }).finally(loadLog);
+    });
 
   const addToSlack = () =>
     run("slack-oauth", async () => {
@@ -163,37 +160,13 @@ export default function Settings({
         )}
       </section>
 
-      <section className="card">
-        <h2>Recent deliveries</h2>
-        {log.length === 0 ? (
-          <p className="muted">No notifications sent yet.</p>
-        ) : (
-          <table className="log">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Channel</th>
-                <th>Type</th>
-                <th>Task</th>
-                <th>Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              {log.map((l) => (
-                <tr key={l.id}>
-                  <td>{formatDate(l.created_at)}</td>
-                  <td>{l.channel}</td>
-                  <td>{l.kind}</td>
-                  <td>{l.task_title ?? (l.kind === "test" ? "—" : "(deleted)")}</td>
-                  <td className={l.success ? "ok-text" : "danger-text"} title={l.error ?? ""}>
-                    {l.success ? "Sent" : `Failed${l.error ? `: ${l.error.slice(0, 60)}` : ""}`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <p className="muted small">
+        See every reminder and test that was sent in{" "}
+        <a href="/history" onClick={(e) => (e.preventDefault(), navigate("/history"))}>
+          History
+        </a>
+        .
+      </p>
 
       <DeleteAccount email={user.email} onDeleted={onAccountDeleted} />
     </div>

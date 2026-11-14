@@ -11,3 +11,5 @@ EMAIL_FROM='"Task(AI)Do" <onboarding@resend.dev>'
 # Optional: enables the one-click "Add to Slack" button
 SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=
+# Optional: Gemini for the AI assistant (Llama on Workers AI is used if unset)
+GEMINI_API_KEY=
