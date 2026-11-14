@@ -121,13 +121,16 @@ export default function Settings({
         </div>
 
         {user.slack_connected ? (
-          <div className="btn-row">
-            <button className="btn outline sm" disabled={busy === "test-slack"} onClick={() => test("slack")}>
-              {busy === "test-slack" ? "Sending…" : "Send test message"}
-            </button>
-            <button className="btn ghost sm danger-text" disabled={busy === "disconnect"} onClick={disconnect}>
-              Disconnect Slack
-            </button>
+          <div className="stack sm">
+            <SlackMention user={user} busy={busy === "mention"} onSave={(v) => save({ slack_mention: v }, "mention")} />
+            <div className="btn-row">
+              <button className="btn outline sm" disabled={busy === "test-slack"} onClick={() => test("slack")}>
+                {busy === "test-slack" ? "Sending…" : "Send test message"}
+              </button>
+              <button className="btn ghost sm danger-text" disabled={busy === "disconnect"} onClick={disconnect}>
+                Disconnect Slack
+              </button>
+            </div>
           </div>
         ) : (
           <div className="stack sm">
@@ -254,6 +257,65 @@ function DeleteAccount({ email, onDeleted }: { email: string; onDeleted: () => v
         </form>
       )}
     </section>
+  );
+}
+
+/**
+ * Slack's phone app only notifies for app messages in a channel when they @mention you, so let the
+ * user choose who reminders mention.
+ */
+function SlackMention({ user, busy, onSave }: { user: User; busy: boolean; onSave: (v: string | null) => Promise<void> }) {
+  const current = user.slack_mention;
+  const mode = !current ? "none" : current === "channel" ? "channel" : "me";
+  const [choice, setChoice] = useState(mode);
+  const [memberId, setMemberId] = useState(mode === "me" ? current! : "");
+  useEffect(() => {
+    setChoice(mode);
+    if (mode === "me") setMemberId(current!);
+  }, [mode, current]);
+
+  const idValid = /^[UW][A-Z0-9]{6,20}$/.test(memberId.trim().toUpperCase());
+  const dirty = choice !== mode || (choice === "me" && memberId.trim().toUpperCase() !== (current ?? ""));
+
+  return (
+    <div className="slack-mention">
+      <label>
+        Notify me on my phone
+        <select value={choice} onChange={(e) => setChoice(e.target.value)} disabled={busy}>
+          <option value="me">Mention me (recommended)</option>
+          <option value="channel">Mention @channel</option>
+          <option value="none">No mention</option>
+        </select>
+      </label>
+      {choice === "me" && (
+        <label>
+          Your Slack member ID
+          <input
+            value={memberId}
+            onChange={(e) => setMemberId(e.target.value)}
+            placeholder="U01ABC2DEF"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+      )}
+      <p className="muted small">
+        {choice === "me"
+          ? "In Slack, tap your profile picture → Profile → ⋮ (More) → Copy member ID, and paste it here. Slack always notifies you when you're mentioned."
+          : choice === "channel"
+            ? "Pings everyone in the channel. Fine for a personal channel; noisy in a shared one."
+            : "Slack's phone app usually won't buzz for app messages unless the channel is set to notify for all new messages."}
+      </p>
+      {dirty && (
+        <button
+          className="btn primary sm"
+          disabled={busy || (choice === "me" && !idValid)}
+          onClick={() => onSave(choice === "none" ? null : choice === "channel" ? "channel" : memberId.trim().toUpperCase())}
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
+      )}
+    </div>
   );
 }
 

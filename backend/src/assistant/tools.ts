@@ -96,6 +96,11 @@ export const TOOLS: ToolDef[] = [
         email_notifications: { type: "boolean" },
         slack_notifications: { type: "boolean" },
         slack_webhook_url: { type: "string" },
+        slack_mention: {
+          type: "string",
+          description:
+            "Who Slack reminders @mention so Slack sends a phone notification: 'channel' for @channel, a Slack member ID like U01ABC2DEF, or 'none'.",
+        },
       },
     },
   },
@@ -211,11 +216,12 @@ export async function runTool(
         return { result: { ...publicUser(await loadUser(db, userId)), push_devices: await pushDeviceCount(db, userId) } };
       case "update_notification_settings": {
         const body: Record<string, unknown> = {};
-        for (const k of ["email_notifications", "slack_notifications", "slack_webhook_url"]) if (k in args) body[k] = args[k];
+        for (const k of ["email_notifications", "slack_notifications", "slack_webhook_url", "slack_mention"]) if (k in args) body[k] = args[k];
         const user = publicUser(await updateNotificationSettings(db, userId, body));
         const parts = [
           "email_notifications" in body && `email ${user.email_notifications ? "on" : "off"}`,
           ("slack_notifications" in body || "slack_webhook_url" in body) && `Slack ${user.slack_notifications ? "on" : "off"}`,
+          "slack_mention" in body && `Slack mentions ${user.slack_mention ? (user.slack_mention === "channel" ? "@channel" : "you") : "off"}`,
         ].filter(Boolean);
         return { result: user, action: { tool: name, label: `Notifications: ${parts.join(", ") || "updated"}` } };
       }

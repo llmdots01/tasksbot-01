@@ -214,5 +214,6 @@ export function publicUser(u: UserRow) {
     slack_notifications: Boolean(u.slack_notifications),
     slack_connected: Boolean(u.slack_webhook_url),
     slack_channel: u.slack_channel,
+    slack_mention: u.slack_mention ?? null,
   };
 }

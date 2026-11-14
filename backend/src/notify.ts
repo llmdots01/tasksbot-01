@@ -6,6 +6,18 @@ type Channel = "email" | "slack" | "push";
 
 const BATCH = 50;
 
+/** Valid stored mention values: "channel" or a Slack member ID (U…/W…). */
+export function isSlackMention(v: string): boolean {
+  return v === "channel" || /^[UW][A-Z0-9]{6,20}$/.test(v);
+}
+
+/** Slack markup for the mention, or "" for none. */
+function slackMentionMarkup(mention: string | null | undefined): string {
+  if (!mention) return "";
+  if (mention === "channel") return "<!channel>";
+  return /^[UW][A-Z0-9]{6,20}$/.test(mention) ? `<@${mention}>` : "";
+}
+
 export function isSlackWebhookUrl(url: string): boolean {
   try {
     const u = new URL(url);
@@ -88,7 +100,18 @@ ${rows.join("\n")}
   }
 }
 
-export async function sendSlack(webhookUrl: string, kind: NotificationKind, task: Partial<TaskRow> & Pick<TaskRow, "title">, appUrl: string): Promise<void> {
+/**
+ * Post to a Slack incoming webhook. Slack's phone app only notifies for app messages in a channel
+ * when they @mention you (or the channel), so `mention` is put in the top-level text, which is what
+ * Slack uses for the notification.
+ */
+export async function sendSlack(
+  webhookUrl: string,
+  kind: NotificationKind,
+  task: Partial<TaskRow> & Pick<TaskRow, "title">,
+  appUrl: string,
+  mention?: string | null,
+): Promise<void> {
   if (!isSlackWebhookUrl(webhookUrl)) throw new Error("Invalid Slack webhook URL");
   const emoji = kind === "due" ? ":alarm_clock:" : kind === "test" ? ":white_check_mark:" : ":bell:";
   const title = headline(kind, task);
@@ -97,7 +120,8 @@ export async function sendSlack(webhookUrl: string, kind: NotificationKind, task
   if (task.priority) fields.push({ type: "mrkdwn", text: `*Priority*\n${escapeSlack(task.priority)}` });
   if (task.category) fields.push({ type: "mrkdwn", text: `*Category*\n${escapeSlack(task.category)}` });
 
-  const blocks: unknown[] = [{ type: "section", text: { type: "mrkdwn", text: `${emoji} *${escapeSlack(title)}*` } }];
+  const ping = slackMentionMarkup(mention);
+  const blocks: unknown[] = [{ type: "section", text: { type: "mrkdwn", text: `${ping ? `${ping} ` : ""}${emoji} *${escapeSlack(title)}*` } }];
   if (task.description) blocks.push({ type: "section", text: { type: "mrkdwn", text: escapeSlack(task.description) } });
   if (kind === "test") blocks.push({ type: "section", text: { type: "mrkdwn", text: "Slack notifications are working." } });
   if (fields.length) blocks.push({ type: "section", fields });
@@ -109,7 +133,7 @@ export async function sendSlack(webhookUrl: string, kind: NotificationKind, task
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: `${title}`, blocks }),
+    body: JSON.stringify({ text: ping ? `${ping} ${escapeSlack(title)}` : escapeSlack(title), blocks }),
   });
   if (!res.ok) throw new Error(`Slack ${res.status}: ${(await res.text()).slice(0, 200)}`);
 }
@@ -135,7 +159,7 @@ export async function notifyUser(env: Env, user: UserRow, task: TaskRow, kind: N
   }
   if (user.slack_notifications && user.slack_webhook_url) {
     jobs.push(
-      sendSlack(user.slack_webhook_url, kind, task, env.FRONTEND_URL)
+      sendSlack(user.slack_webhook_url, kind, task, env.FRONTEND_URL, user.slack_mention)
         .then(() => log(env, user.id, task.id, "slack", kind))
         .catch((e) => log(env, user.id, task.id, "slack", kind, String(e?.message ?? e))),
     );

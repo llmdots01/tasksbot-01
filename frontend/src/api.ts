@@ -75,6 +75,7 @@ export interface User {
   slack_notifications: boolean;
   slack_connected: boolean;
   slack_channel: string | null;
+  slack_mention: string | null;
 }
 
 export interface Stats {
