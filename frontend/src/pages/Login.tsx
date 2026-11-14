@@ -15,6 +15,7 @@ import {
   Wordmark,
 } from "../icons";
 import { Footer } from "./Legal";
+import { InstallButton } from "../install";
 
 const FEATURES = [
   { icon: <BellIcon />, title: "Reminders you choose", text: "Pick an exact time or a preset (15 min, 1 hour or 1 day before), plus an alert when the task is due." },
@@ -54,6 +55,7 @@ export default function Login() {
         </span>
         <nav />
         <div className="topbar-right">
+          <InstallButton compact />
           <ThemeButton />
           <button className="btn primary sm" onClick={() => setSigninOpen(true)} aria-haspopup="dialog">
             Login <ArrowRightIcon width={15} height={15} />

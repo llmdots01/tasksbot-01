@@ -24,7 +24,14 @@ export default function Tasks() {
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [q, setQ] = useState("");
-  const [editing, setEditing] = useState<Editing>(null);
+  // The installed app's "New task" shortcut opens /tasks?new=1.
+  const [editing, setEditing] = useState<Editing>(() => {
+    if (new URLSearchParams(location.search).get("new")) {
+      history.replaceState(null, "", "/tasks");
+      return "new";
+    }
+    return null;
+  });
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();

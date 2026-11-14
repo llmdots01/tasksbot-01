@@ -42,6 +42,8 @@ export function applyTheme(mode = getMode(), accent = getAccent()) {
   const root = document.documentElement;
   root.dataset.theme = mode;
   root.dataset.accent = accent;
+  // Match the phone's status bar / installed-app title bar to the theme.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", mode === "light" ? "#f6f7f9" : "#07090b");
 }
 
 /** Moon/sun button: click opens the accent picker, double-click toggles dark/light. */

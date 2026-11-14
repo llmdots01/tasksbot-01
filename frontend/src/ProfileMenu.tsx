@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { User } from "./api";
 import { navigate } from "./router";
-import { ChevronDownIcon, ClockIcon, GearIcon, GridIcon, ListIcon, LogOutIcon, UserIcon } from "./icons";
+import { ChevronDownIcon, ClockIcon, GearIcon, GridIcon, ListIcon, LogOutIcon, PhoneIcon, UserIcon } from "./icons";
+import { InstallInstructions, useInstall } from "./install";
 
 const ITEMS: { path: string; label: string; icon: ReactNode }[] = [
   { path: "/", label: "Dashboard", icon: <GridIcon /> },
@@ -23,6 +24,8 @@ function Avatar({ user, size = 30 }: { user: User; size?: number }) {
 /** Avatar button that opens a menu with the app's pages and sign out. */
 export function ProfileMenu({ user, path, onLogout }: { user: User; path: string; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
+  const [installHelp, setInstallHelp] = useState(false);
+  const install = useInstall();
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
 
@@ -102,12 +105,27 @@ export function ProfileMenu({ user, path, onLogout }: { user: User; path: string
             </a>
           ))}
           <div className="pop-divider" />
+          {install.available && (
+            <button
+              type="button"
+              role="menuitem"
+              className="menu-item"
+              onClick={async () => {
+                setOpen(false);
+                if (!(await install.prompt())) setInstallHelp(true);
+              }}
+            >
+              <PhoneIcon />
+              Install app
+            </button>
+          )}
           <button type="button" role="menuitem" className="menu-item" onClick={onLogout}>
             <LogOutIcon />
             Sign out
           </button>
         </div>
       )}
+      {installHelp && <InstallInstructions ios={install.ios} onClose={() => setInstallHelp(false)} />}
     </div>
   );
 }
